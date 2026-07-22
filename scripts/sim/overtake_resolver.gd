@@ -24,7 +24,8 @@ static func resolve_all(engine: RaceEngine) -> void:
 	for i in range(1, order.size()):
 		var leader: CarData = order[i - 1]
 		var follower: CarData = order[i]
-		if leader.finished or follower.finished or leader.in_pit or follower.in_pit:
+		if leader.finished or follower.finished or leader.in_pit or follower.in_pit \
+				or leader.dnf or follower.dnf:
 			follower.in_battle = false
 			continue
 		_resolve_pair(engine, leader, follower)

@@ -10,4 +10,5 @@ primary_color = Color(0.25, 0.55, 1.0, 1)
 stat_aero = 78.0
 stat_power = 82.0
 stat_chassis = 76.0
+stat_reliability = 87.0
 driver_ids = PackedStringArray("volkov", "dahl")

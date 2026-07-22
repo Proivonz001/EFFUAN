@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_path.gd" id="1_nkce4"]
+[ext_resource type="Script" path="res://scripts/race/track_renderer.gd" id="2_elqg0"]
+[ext_resource type="Resource" path="res://data/tracks/track_02.tres" id="3_s1blu"]
+
+[sub_resource type="Curve2D" id="Curve2D_fc86t"]
+bake_interval = 8.0
+_data = {
+"points": PackedVector2Array(-130.9, -3.3, 130.9, 3.3, 400, 810, -242, 0, 242, 0, 950, 815, -140.8, 7.7, 140.8, -7.7, 1500, 810, -24.2, 18.7, 24.2, -18.7, 1590, 780, -15.4, 48.4, 15.4, -48.4, 1610, 725, -15.4, 67.1, 15.4, -67.1, 1660, 560, -2.2, 48.4, 2.2, -48.4, 1680, 420, 13.2, 28.6, -13.2, -28.6, 1670, 340, 37.4, 26.4, -37.4, -26.4, 1620, 290, 50.6, 28.6, -50.6, -28.6, 1500, 220, 52.8, 19.8, -52.8, -19.8, 1390, 160, 68.2, 9.9, -68.2, -9.9, 1260, 130, 61.6, 0, -61.6, 0, 1080, 115, 33, -14.3, -33, 14.3, 980, 130, 33, -37.4, -33, 37.4, 930, 180, 41.8, -41.8, -41.8, 41.8, 830, 300, 39.6, -19.8, -39.6, 19.8, 740, 370, 63.8, -22, -63.8, 22, 650, 390, 70.4, -37.4, -70.4, 37.4, 450, 470, 33, -37.4, -33, 37.4, 330, 560, 11, -30.8, -11, 30.8, 300, 640, 1.1, -24.2, -1.1, 24.2, 280, 700, -7.7, -17.6, 7.7, 17.6, 295, 750, -13.2, -11, 13.2, 11, 315, 780, -18.7, -6.6, 18.7, 6.6, 355, 800, -130.9, -3.3, 130.9, 3.3, 400, 810)
+}
+point_count = 26
+
+[node name="TrackRoot" type="Node2D" unique_id=1646201376]
+
+[node name="TrackPath" type="Path2D" parent="." unique_id=898304791]
+curve = SubResource("Curve2D_fc86t")
+script = ExtResource("1_nkce4")
+anchor_points = PackedVector2Array(400, 810, 950, 815, 1500, 810, 1590, 780, 1610, 725, 1660, 560, 1680, 420, 1670, 340, 1620, 290, 1500, 220, 1390, 160, 1260, 130, 1080, 115, 980, 130, 930, 180, 830, 300, 740, 370, 650, 390, 450, 470, 330, 560, 300, 640, 280, 700, 295, 750, 315, 780, 355, 800)
+
+[node name="TrackRenderer" type="Node2D" parent="." unique_id=1810221628 node_paths=PackedStringArray("path")]
+script = ExtResource("2_elqg0")
+path = NodePath("../TrackPath")
+track_data = ExtResource("3_s1blu")

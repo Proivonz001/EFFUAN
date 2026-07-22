@@ -10,4 +10,5 @@ primary_color = Color(0.0, 0.82, 0.75, 1)
 stat_aero = 90.0
 stat_power = 93.0
 stat_chassis = 86.0
+stat_reliability = 92.0
 driver_ids = PackedStringArray("brandt", "callahan")

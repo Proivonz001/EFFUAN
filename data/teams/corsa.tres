@@ -10,4 +10,5 @@ primary_color = Color(0.92, 0.92, 0.95, 1)
 stat_aero = 75.0
 stat_power = 74.0
 stat_chassis = 78.0
+stat_reliability = 88.0
 driver_ids = PackedStringArray("sacchi", "quintana")

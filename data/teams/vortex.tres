@@ -10,4 +10,5 @@ primary_color = Color(0.86, 0.08, 0.1, 1)
 stat_aero = 92.0
 stat_power = 90.0
 stat_chassis = 88.0
+stat_reliability = 94.0
 driver_ids = PackedStringArray("voss", "nakagawa")

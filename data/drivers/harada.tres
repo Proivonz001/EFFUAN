@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "harada"
+driver_name = "Sho Harada"
+code = "HAR"
+skill_pace = 64.0
+skill_consistency = 66.0
+skill_overtaking = 58.0
+skill_defending = 62.0
+skill_tyre_mgmt = 66.0

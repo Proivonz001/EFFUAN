@@ -106,7 +106,7 @@ func _build(players: Array) -> void:
 		bottom.add_child(b)
 		_mix_buttons.append(b)
 	bottom.add_child(_spacer())
-	for cid in ["soft", "medium", "hard"]:
+	for cid in ["soft", "medium", "hard", "inter", "wet"]:
 		var compound := GameData.get_compound(cid)
 		if compound == null:
 			continue

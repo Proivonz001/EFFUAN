@@ -6,6 +6,8 @@ extends Resource
 ## Untyped Array so hand-edited .tres files load leniently; elements are TrackSegment.
 @export var segments: Array = []
 @export var pit_lane_time_loss: float = 21.0
+## Ideal setup balance for this track: -1 = low drag (power track), +1 = high downforce.
+@export_range(-1.0, 1.0) var df_bias: float = 0.0
 ## Reference lap for a perfect car — tuning anchor, not enforced.
 @export var base_lap_time: float = 80.0
 @export var ambient_temp_c: float = 24.0

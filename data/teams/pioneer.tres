@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "pioneer"
+team_name = "Pioneer Vega"
+primary_color = Color(0.5, 0.3, 0.8, 1)
+stat_aero = 46.0
+stat_power = 50.0
+stat_chassis = 45.0
+stat_reliability = 82.0
+driver_ids = PackedStringArray("vargas", "reyes")

@@ -94,8 +94,12 @@ func _apply_transform(delta: float) -> void:
 	position = pos + perp * _lane_current
 	rotation = dir.angle()
 
-	# Pit / finished dimming.
-	var dim := 0.25 if car.in_pit else 1.0
+	# Pit / retirement dimming.
+	var dim := 1.0
+	if car.in_pit:
+		dim = 0.25
+	elif car.dnf:
+		dim = 0.15
 	_body.color = Color(car.team.primary_color, dim)
 	_shadow.color = Color(0, 0, 0, 0.35 * dim)
 
@@ -106,4 +110,4 @@ func _apply_transform(delta: float) -> void:
 		if pts.size() > TRAIL_LENGTH:
 			pts.resize(TRAIL_LENGTH)
 		_trail.points = pts
-		_trail.visible = not car.in_pit
+		_trail.visible = not car.in_pit and not car.dnf

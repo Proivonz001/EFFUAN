@@ -10,4 +10,5 @@ primary_color = Color(0.0, 0.62, 0.3, 1)
 stat_aero = 82.0
 stat_power = 80.0
 stat_chassis = 83.0
+stat_reliability = 89.0
 driver_ids = PackedStringArray("marlow", "zubiaga")

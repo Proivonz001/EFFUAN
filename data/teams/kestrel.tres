@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "kestrel"
+team_name = "Kestrel Dynamics"
+primary_color = Color(0.3, 0.7, 0.65, 1)
+stat_aero = 52.0
+stat_power = 56.0
+stat_chassis = 50.0
+stat_reliability = 83.0
+driver_ids = PackedStringArray("kessler", "novak")

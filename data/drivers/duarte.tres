@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "duarte"
+driver_name = "Ana Duarte"
+code = "DUA"
+skill_pace = 61.0
+skill_consistency = 64.0
+skill_overtaking = 56.0
+skill_defending = 60.0
+skill_tyre_mgmt = 62.0

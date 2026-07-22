@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "bianco"
+driver_name = "Sergio Bianco"
+code = "BIA"
+skill_pace = 72.0
+skill_consistency = 68.0
+skill_overtaking = 66.0
+skill_defending = 70.0
+skill_tyre_mgmt = 74.0

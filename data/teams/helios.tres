@@ -10,4 +10,5 @@ primary_color = Color(1.0, 0.85, 0.1, 1)
 stat_aero = 68.0
 stat_power = 66.0
 stat_chassis = 70.0
+stat_reliability = 85.0
 driver_ids = PackedStringArray("mori", "whitfield")

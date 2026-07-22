@@ -33,8 +33,24 @@ func _enter_tree() -> void:
 
 
 func _setup_race() -> void:
-	var series: SeriesData = GameData.get_current_series()
-	_track_data = GameData.get_current_track()
+	var series: SeriesData
+	var entries: Array
+	var weather: WeatherSystem = null
+	var grid_ready := false
+	if GameState.career_active:
+		series = GameState.player_series()
+		_track_data = GameState.current_track()
+		weather = GameState.pending_weather
+		if GameState.pending_grid.is_empty():
+			entries = GameState.build_entries(GameState.player_series_id)
+		else:
+			entries = GameState.pending_grid
+			grid_ready = true
+	else:
+		# No career context (direct race.tscn run / tests): quick exhibition race.
+		series = GameData.get_current_series()
+		_track_data = GameData.get_current_track()
+		entries = GameData.build_entries(series)
 	if series == null or _track_data == null:
 		push_error("RaceManager: missing series or track data")
 		return
@@ -45,12 +61,17 @@ func _setup_race() -> void:
 	move_child(track_scene, 0)
 	_renderer = track_scene.get_node("TrackRenderer")
 
-	# Engine.
+	# Engine. Rain compounds are always in the pool alongside the series slicks.
 	var compounds: Array = []
 	for cid in series.allowed_compound_ids:
 		compounds.append(GameData.get_compound(cid))
-	var entries: Array = GameData.build_entries(series)
-	engine.setup(_track_data, entries, series.race_laps, compounds, GameData.player_team_id)
+	for cid in ["inter", "wet"]:
+		var c := GameData.get_compound(cid)
+		if c and c not in compounds:
+			compounds.append(c)
+	var seed_value: int = GameState.race_seed() if GameState.career_active else 0
+	engine.setup(_track_data, entries, series.race_laps, compounds,
+			GameData.player_team_id, seed_value, weather, grid_ready)
 
 	# Car visuals.
 	var car_layer := Node2D.new()

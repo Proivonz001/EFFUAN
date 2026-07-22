@@ -11,4 +11,6 @@ extends Resource
 @export var stat_power: float = 70.0
 ## Mild gains everywhere + tyre gentleness.
 @export var stat_chassis: float = 70.0
+## Baseline mechanical reliability 0-100; R&D risk moves the career value.
+@export var stat_reliability: float = 90.0
 @export var driver_ids: PackedStringArray = []

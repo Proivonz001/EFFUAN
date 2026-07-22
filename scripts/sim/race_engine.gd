@@ -56,6 +56,22 @@ const PUSH_OVERTAKE := 0.18
 const PUSH_RICH := 0.10
 const PUSH_LEAN := -0.08
 const PUSH_SLIDING := 0.5            # scaled by (1 - grip): worn tyres slide and overheat
+
+# Setup & confidence.
+const SETUP_MISMATCH_LAP := 0.22     # s/lap penalty per unit of (bias - track ideal)^2
+const CONFIDENCE_LAP_GAIN := 0.30    # s/lap swing across confidence 0-100
+
+# Rain driving.
+const WET_NOISE_MULT := 1.5          # extra driver noise at full wetness
+# AI compound-switch wetness thresholds (individual hesitation applied on top).
+const AI_TO_INTER := 0.30
+const AI_TO_WET := 0.68
+const AI_WET_TO_INTER := 0.52
+const AI_TO_SLICK := 0.16
+
+# Reliability -> mechanical failure. fail/lap at reliability 100 and 70.
+const FAIL_PER_LAP_BEST := 0.00015
+const FAIL_PER_LAP_WORST := 0.0045
 # ------------------------------------------------------------------------------
 
 var track: TrackData
@@ -65,6 +81,7 @@ var order: Array = []                # Array[CarData], sorted by race position
 var events: Array = []               # dicts drained by RaceManager each tick
 var sim_time: float = 0.0
 var race_over: bool = false
+var weather := WeatherSystem.new()   # DRY unless setup() gets a configured one
 
 var _rng := RandomNumberGenerator.new()
 var _allowed_compounds: Array = []   # Array[TyreCompound]
@@ -78,14 +95,21 @@ var _base_lap_total: float = 0.0
 
 # =========================================================== setup & commands =
 
+## entries: [{team, driver, setup_bias?, confidence?, reliability?}, ...]
+## p_weather: a configured WeatherSystem, or null for a dry race.
+## use_entry_order: entries are already grid-sorted (external qualifying) —
+## skip the internal quali sim.
 func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: Array,
-		player_team_id: String, seed_value: int = 0) -> void:
+		player_team_id: String, seed_value: int = 0, p_weather: WeatherSystem = null,
+		use_entry_order: bool = false) -> void:
 	track = p_track
 	race_laps = p_laps
 	_allowed_compounds = allowed_compounds
 	_rng.seed = seed_value if seed_value != 0 else randi()
 	_track_len = track.total_length_m()
 	_precompute_segment_times()
+	if p_weather:
+		weather = p_weather
 
 	cars.clear()
 	for entry in entries:
@@ -94,10 +118,17 @@ func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: A
 		car.team = entry.team
 		car.driver = entry.driver
 		car.is_player = entry.team.id == player_team_id
+		car.setup_bias = entry.get("setup_bias", track.df_bias)
+		car.confidence = entry.get("confidence", 50.0)
+		car.reliability = entry.get("reliability", 90.0)
 		car.fuel_kg = race_laps * BASE_FUEL_BURN_LAP * FUEL_LOAD_MARGIN
 		cars.append(car)
 
-	_run_qualifying()
+	if use_entry_order:
+		for i in cars.size():
+			cars[i].grid_pos = i + 1
+	else:
+		_run_qualifying()
 	_place_grid()
 	order = cars.duplicate()
 	order.sort_custom(_position_sort)
@@ -132,8 +163,9 @@ func get_classification() -> Array:
 func tick(sim_dt: float) -> void:
 	if race_over:
 		return
+	weather.tick(sim_time, sim_dt)
 	for car in order:
-		if not car.finished:
+		if not car.finished and not car.dnf:
 			_advance_car(car, sim_dt)
 	sim_time += sim_dt
 	order.sort_custom(_position_sort)
@@ -173,6 +205,15 @@ func _on_segment_complete(car: CarData) -> void:
 	_apply_segment_side_effects(car, seg)
 	if car.attack_cooldown > 0:
 		car.attack_cooldown -= 1
+
+	# Mechanical failure roll (reliability comes from R&D risk history).
+	var fail_per_lap: float = lerpf(FAIL_PER_LAP_BEST, FAIL_PER_LAP_WORST,
+			clampf((100.0 - car.reliability) / 30.0, 0.0, 1.0))
+	if _rng.randf() < fail_per_lap * _seg_shares[car.segment_index]:
+		car.dnf = true
+		car.in_battle = false
+		events.append({"type": "dnf", "car": car})
+		return
 
 	car.segment_index += 1
 	if car.segment_index >= track.segment_count():
@@ -238,10 +279,17 @@ func _compute_segment_time(car: CarData) -> float:
 	var is_corner := seg.type == TrackSegment.Type.CORNER
 	var t := base
 
-	# Tyre grip (dominant on corners).
-	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c)
+	# Tyre grip (dominant on corners), including compound-vs-wetness match.
+	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c, weather.wetness)
 	var grip_strength := GRIP_TIME_CORNER if is_corner else GRIP_TIME_STRAIGHT
 	t *= 1.0 + (1.0 - grip) * grip_strength
+
+	# Setup: parabolic penalty away from the track's ideal downforce balance.
+	var setup_err := car.setup_bias - track.df_bias
+	t += SETUP_MISMATCH_LAP * setup_err * setup_err * share
+
+	# Driver confidence.
+	t -= (car.confidence - 50.0) / 100.0 * CONFIDENCE_LAP_GAIN * share
 
 	# Dirty air: corners only, within the slipstream window.
 	if is_corner and car.gap_ahead_s < SLIPSTREAM_GAP_S:
@@ -272,8 +320,9 @@ func _compute_segment_time(car: CarData) -> float:
 	elif (mode == CarData.ErsMode.DEPLOY or mode == CarData.ErsMode.OVERTAKE) and not is_corner:
 		t += ERS_TIME_LAP[mode] * _seg_straight_shares[i]
 
-	# Driver noise, scaled down to segment size.
+	# Driver noise, scaled down to segment size; rain amplifies mistakes.
 	var sigma_lap := NOISE_LAP_SIGMA_BASE - NOISE_SIGMA_PER_CONSISTENCY * car.driver.skill_consistency
+	sigma_lap *= 1.0 + WET_NOISE_MULT * weather.wetness
 	t += _rng.randfn(0.0, sigma_lap * sqrt(share))
 
 	return maxf(t, base * 0.7)
@@ -295,7 +344,7 @@ func _apply_segment_side_effects(car: CarData, seg: TrackSegment) -> void:
 	car.ers_charge = clampf(car.ers_charge + charge_delta, 0.0, 100.0)
 
 	# Tyre temperature.
-	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c)
+	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c, weather.wetness)
 	var push := 1.0 + PUSH_SLIDING * (1.0 - grip)
 	match mode:
 		CarData.ErsMode.DEPLOY: push += PUSH_DEPLOY
@@ -306,7 +355,8 @@ func _apply_segment_side_effects(car: CarData, seg: TrackSegment) -> void:
 	var in_dirty_air := car.gap_ahead_s < SLIPSTREAM_GAP_S
 	if in_dirty_air:
 		push += DIRTY_AIR_PUSH
-	car.tyre_temp_c += TyreModel.temp_delta(is_corner, car.tyre_temp_c, track.ambient_temp_c, push)
+	car.tyre_temp_c += TyreModel.temp_delta(
+			is_corner, car.tyre_temp_c, track.ambient_temp_c, push, weather.wetness)
 
 	# Tyre wear.
 	var dirty_factor := 1.0
@@ -314,7 +364,8 @@ func _apply_segment_side_effects(car: CarData, seg: TrackSegment) -> void:
 		dirty_factor += DIRTY_AIR_WEAR_MAX * (1.0 - car.gap_ahead_s / SLIPSTREAM_GAP_S)
 	car.tyre_wear = minf(car.tyre_wear + TyreModel.wear_delta(
 			car.compound, car.tyre_temp_c, share,
-			car.driver.skill_tyre_mgmt, car.team.stat_chassis, dirty_factor), 1.0)
+			car.driver.skill_tyre_mgmt, car.team.stat_chassis, dirty_factor,
+			weather.wetness), 1.0)
 
 
 func _effective_ers_mode(car: CarData) -> int:
@@ -371,6 +422,11 @@ func _update_gaps() -> void:
 
 
 func _position_sort(a: CarData, b: CarData) -> bool:
+	# Retirements always classify behind running/finished cars.
+	if a.dnf != b.dnf:
+		return b.dnf
+	if a.dnf and b.dnf:
+		return a.race_distance_m > b.race_distance_m
 	if a.finished != b.finished:
 		return a.finished
 	if a.finished and b.finished:
@@ -380,7 +436,7 @@ func _position_sort(a: CarData, b: CarData) -> bool:
 
 func _all_finished() -> bool:
 	for car in cars:
-		if not car.finished:
+		if not car.finished and not car.dnf:
 			return false
 	return true
 
@@ -389,6 +445,32 @@ func _all_finished() -> bool:
 
 func _ai_lap_decisions(car: CarData) -> void:
 	var laps_remaining := race_laps - car.laps_crossed
+
+	# Weather call first: being on the wrong tyre costs seconds per lap.
+	# Small per-driver hesitation so the field doesn't box in the same lap.
+	var hesitation := (70.0 - car.driver.skill_consistency) / 700.0
+	var w := weather.wetness
+	var weather_target: TyreCompound = null
+	if not TyreModel.is_rain_tyre(car.compound):
+		if w > AI_TO_WET + hesitation:
+			weather_target = _find_compound("wet")
+		elif w > AI_TO_INTER + hesitation:
+			weather_target = _find_compound("inter")
+	elif car.compound.id == "inter":
+		if w > AI_TO_WET + hesitation:
+			weather_target = _find_compound("wet")
+		elif w < AI_TO_SLICK - hesitation:
+			weather_target = _ai_pick_compound(laps_remaining)
+	elif car.compound.id == "wet":
+		if w < AI_TO_SLICK - hesitation:
+			weather_target = _ai_pick_compound(laps_remaining)
+		elif w < AI_WET_TO_INTER - hesitation:
+			weather_target = _find_compound("inter")
+	if weather_target and weather_target != car.compound and laps_remaining >= 1:
+		car.pit_requested = true
+		car.pit_target_compound = weather_target
+		_enter_pit(car)
+		return
 
 	# Pit call: box before the cliff, never with a handful of laps left.
 	if car.tyre_wear >= 0.60 and laps_remaining >= 3:
@@ -447,8 +529,17 @@ func _quali_score(car: CarData) -> float:
 func _place_grid() -> void:
 	var soft := _find_compound("soft")
 	var medium := _find_compound("medium")
+	# Wet grid: everyone starts on the appropriate rain tyre.
+	var forced: TyreCompound = null
+	if weather.wetness > AI_TO_WET:
+		forced = _find_compound("wet")
+	elif weather.wetness > AI_TO_INTER:
+		forced = _find_compound("inter")
 	for car in cars:
-		car.compound = soft if (car.grid_pos <= 12 or medium == null) else medium
+		if forced:
+			car.compound = forced
+		else:
+			car.compound = soft if (car.grid_pos <= 12 or medium == null) else medium
 		car.pit_target_compound = medium if medium else soft
 		car.laps_crossed = -1
 		car.max_lap_seen = -1

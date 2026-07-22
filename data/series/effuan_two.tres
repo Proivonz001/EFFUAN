@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/series_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "effuan_two"
+series_name = "EFFUAN Series Two"
+tier = 2
+team_ids = PackedStringArray("falchi", "boreal", "aquila", "delta", "cinder", "estrela", "kestrel", "ottone", "pioneer", "terra")
+calendar_track_ids = PackedStringArray("track_01", "track_02", "track_03", "track_04", "track_02", "track_03")
+race_laps = 22
+allowed_compound_ids = PackedStringArray("soft", "medium", "hard")
+points_table = PackedInt32Array(25, 18, 15, 12, 10, 8, 6, 4, 2, 1)

@@ -7,6 +7,36 @@ in races that last 5-8 real minutes.
 
 ![Godot 4.7](https://img.shields.io/badge/Godot-4.7-blue)
 
+## Milestone 2 — Vertical Slice (done)
+
+The full concept loop is playable: **menu → season hub → setup + qualifying →
+race → results → hub … → season end with promotion/relegation → next season.**
+
+- **Career**: start at mid-grid **Aquila Corse in Series Two** and fight for
+  promotion. Two 10-team series, 6-round season over 4 circuits, points,
+  standings, bottom-2/top-2 swap at season end. JSON autosave (`user://career.json`).
+- **Dynamic weather**: per-race forecast scenarios (dry / showers / wet-drying /
+  building rain), track wetness that integrates rain vs drying, slick→inter→wet
+  crossover points, AI pit reactions, live weather widget with forecast.
+- **R&D**: pick a pillar (aero/power/chassis) and a risk level each round —
+  aggressive programs gain more but erode **reliability**, which feeds a real
+  mechanical-DNF probability in races. AI teams develop too.
+- **Setup & confidence**: one pre-race downforce slider vs. each track's ideal
+  balance; instant one-lap qualifying builds the grid; drivers carry a
+  confidence rating that reacts to results and setup quality.
+- **4 circuits** with distinct characters: Levante (balanced), Anello di
+  Ponente (power), Passo Serrano (high downforce), Baia Azzurra (street).
+
+### Vertical-slice tests
+
+```
+godot --headless --path . -s res://tests/test_wet_race.gd     # forced storm: field switches to rain tyres
+godot --headless --path . -- --test-season                    # automated 6-round career incl. promotion
+```
+
+Debug flags (after `--`): `--test-hub`, `--test-setup`, `--test-race`,
+`--screenshot=N`.
+
 ## Milestone 1 — "Watchable Race" (done)
 
 - **Segment-based race engine** (Motorsport Manager "TimeCost" style): the lap is

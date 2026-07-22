@@ -9,7 +9,7 @@ func _ready() -> void:
 	manager = get_node("../..")
 	manager.race_finished.connect(_on_race_finished)
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _on_race_finished(classification: Array) -> void:
@@ -28,22 +28,53 @@ func _on_race_finished(classification: Array) -> void:
 	vbox.add_child(HSeparator.new())
 
 	var leader: CarData = classification[0]
-	var series: SeriesData = GameData.get_current_series()
+	var series: SeriesData = GameState.player_series() if GameState.career_active \
+			else GameData.get_current_series()
+	var scoring := 0
 	for i in classification.size():
 		var car: CarData = classification[i]
-		var pts: int = series.points_table[i] if i < series.points_table.size() else 0
+		var pts := 0
+		var gap: String
+		if car.dnf:
+			gap = "DNF"
+		else:
+			gap = "WINNER" if i == 0 else "+%.1f" % (car.finish_time - leader.finish_time)
+			if scoring < series.points_table.size():
+				pts = series.points_table[scoring]
+			scoring += 1
 		var row := Label.new()
-		var gap := "WINNER" if i == 0 else "+%.1f" % (car.finish_time - leader.finish_time)
 		row.text = "P%-3d %s  %-18s %-10s %s pts" % [i + 1, car.short_code(), car.team.team_name, gap, str(pts)]
 		row.add_theme_font_size_override("font_size", 15)
 		if car.is_player:
 			row.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+		elif car.dnf:
+			row.add_theme_color_override("font_color", Color(0.55, 0.57, 0.62))
 		vbox.add_child(row)
 
 	vbox.add_child(HSeparator.new())
-	var again := Button.new()
-	again.text = "RACE AGAIN"
-	again.custom_minimum_size = Vector2(200, 48)
-	again.pressed.connect(func() -> void:
-		get_tree().reload_current_scene())
-	vbox.add_child(again)
+	var main := get_node("/root/Main")
+	if GameState.career_active:
+		var cont := Button.new()
+		cont.text = "CONTINUE"
+		cont.custom_minimum_size = Vector2(220, 48)
+		cont.focus_mode = Control.FOCUS_NONE
+		cont.pressed.connect(func() -> void:
+			GameState.apply_player_race(classification)
+			if GameState.season_over:
+				main.goto_season_end()
+			else:
+				main.goto_hub())
+		vbox.add_child(cont)
+	else:
+		var again := Button.new()
+		again.text = "RACE AGAIN"
+		again.custom_minimum_size = Vector2(200, 48)
+		again.focus_mode = Control.FOCUS_NONE
+		again.pressed.connect(func() -> void: main.goto_race())
+		vbox.add_child(again)
+		var menu := Button.new()
+		menu.text = "MENU"
+		menu.custom_minimum_size = Vector2(200, 44)
+		menu.focus_mode = Control.FOCUS_NONE
+		menu.pressed.connect(func() -> void: main.goto_menu())
+		vbox.add_child(menu)

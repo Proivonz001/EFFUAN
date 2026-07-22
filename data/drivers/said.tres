@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "said"
+driver_name = "Omar Said"
+code = "SAI"
+skill_pace = 47.0
+skill_consistency = 48.0
+skill_overtaking = 42.0
+skill_defending = 46.0
+skill_tyre_mgmt = 50.0

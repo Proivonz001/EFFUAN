@@ -30,7 +30,9 @@ func _build() -> void:
 	add_child(vbox)
 
 	_title_label = Label.new()
-	_title_label.text = GameData.get_current_track().track_name.to_upper()
+	var track: TrackData = GameState.current_track() if GameState.career_active \
+			else GameData.get_current_track()
+	_title_label.text = track.track_name.to_upper()
 	_title_label.add_theme_font_size_override("font_size", 15)
 	_title_label.add_theme_color_override("font_color", Color(0.7, 0.72, 0.78))
 	vbox.add_child(_title_label)
@@ -117,7 +119,11 @@ func _on_positions(order: Array) -> void:
 		widgets.tyre.add_theme_color_override("font_color", car.compound.display_color)
 		widgets.wear.text = "%d%%" % int(car.tyre_wear * 100.0)
 		var flashing: bool = _flash.has(car.index)
-		widgets.root.modulate = Color(0.4, 1.0, 0.5) if flashing else Color.WHITE
+		if car.dnf:
+			widgets.gap.text = "OUT"
+			widgets.root.modulate = Color(1, 1, 1, 0.35)
+		else:
+			widgets.root.modulate = Color(0.4, 1.0, 0.5) if flashing else Color.WHITE
 
 
 func _gap_text(car: CarData, leader: CarData, pos_index: int) -> String:

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "terra"
+team_name = "Terra Bruna"
+primary_color = Color(0.55, 0.4, 0.25, 1)
+stat_aero = 42.0
+stat_power = 44.0
+stat_chassis = 40.0
+stat_reliability = 81.0
+driver_ids = PackedStringArray("bruni", "said")

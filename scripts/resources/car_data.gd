@@ -11,6 +11,9 @@ var index: int = -1
 var driver: DriverData
 var team: TeamData
 var is_player: bool = false
+var setup_bias: float = 0.0           # -1 low drag .. +1 high downforce
+var confidence: float = 50.0          # 0-100, from career state
+var reliability: float = 90.0         # 0-100, from R&D risk history
 
 # --- live physical state ---
 var fuel_kg: float = 0.0
@@ -48,6 +51,7 @@ var last_lap_time: float = 0.0
 var best_lap_time: float = 0.0
 var finished: bool = false
 var finish_time: float = 0.0
+var dnf: bool = false                 # mechanical retirement
 
 # --- battle bookkeeping (engine internal) ---
 var gap_ahead_s: float = 99.0         # live gap to the car directly ahead on track

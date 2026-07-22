@@ -10,4 +10,5 @@ primary_color = Color(1.0, 0.53, 0.0, 1)
 stat_aero = 85.0
 stat_power = 86.0
 stat_chassis = 84.0
+stat_reliability = 90.0
 driver_ids = PackedStringArray("ferretti", "hale")

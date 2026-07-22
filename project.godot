@@ -14,6 +14,7 @@ config/features=PackedStringArray("4.7")
 [autoload]
 
 GameData="*res://autoload/game_data.gd"
+GameState="*res://autoload/game_state.gd"
 
 [display]
 

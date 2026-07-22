@@ -10,4 +10,5 @@ primary_color = Color(0.62, 0.72, 0.18, 1)
 stat_aero = 62.0
 stat_power = 65.0
 stat_chassis = 63.0
+stat_reliability = 84.0
 driver_ids = PackedStringArray("costa", "vance")

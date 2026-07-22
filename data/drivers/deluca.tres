@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "deluca"
+driver_name = "Marco De Luca"
+code = "DEL"
+skill_pace = 71.0
+skill_consistency = 66.0
+skill_overtaking = 72.0
+skill_defending = 64.0
+skill_tyre_mgmt = 68.0

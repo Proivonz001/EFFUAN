@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "boreal"
+team_name = "Boreal Racing"
+primary_color = Color(0.4, 0.85, 0.9, 1)
+stat_aero = 66.0
+stat_power = 68.0
+stat_chassis = 62.0
+stat_reliability = 87.0
+driver_ids = PackedStringArray("kovacs", "steiner")
