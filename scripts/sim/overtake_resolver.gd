@@ -5,7 +5,7 @@ extends RefCounted
 ## a clean swap, or the train clamp (held behind at MIN_GAP, inheriting the pace).
 
 # ------------------------------------------------------------------ tuning ---
-const BASE_PASS_CHANCE := 0.13        # divided by the zone's overtaking_difficulty
+const BASE_PASS_CHANCE := 0.115       # divided by the zone's overtaking_difficulty
 const PACE_DELTA_WEIGHT := 3.0        # relative pace difference -> chance
 const SKILL_WEIGHT := 0.25            # (attacker overtaking - defender defending)/100
 const DRS_BONUS := 0.15

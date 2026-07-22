@@ -10,8 +10,8 @@ extends Path2D
 		anchor_points = value
 		_rebuild()
 
-## Tangent length as a fraction of the neighbour-to-neighbour distance.
-@export_range(0.0, 0.5) var smoothness: float = 0.22:
+## Handle length as a fraction of the distance to each neighbour.
+@export_range(0.0, 0.6) var smoothness: float = 0.36:
 	set(value):
 		smoothness = value
 		_rebuild()
@@ -21,20 +21,22 @@ func _ready() -> void:
 	_rebuild()
 
 
+## Catmull-Rom direction with PER-SIDE clamped handle lengths: each handle is
+## proportional to the distance of ITS neighbour, so a long straight feeding a
+## tight corner no longer produces oversized tangents (the old visible kinks).
 func _rebuild() -> void:
 	var n := anchor_points.size()
 	if n < 3:
 		return
 	var c := Curve2D.new()
 	c.bake_interval = 4.0
-	for i in n:
-		var prev := anchor_points[(i - 1 + n) % n]
-		var next := anchor_points[(i + 1) % n]
-		var tangent := (next - prev) * smoothness
-		c.add_point(anchor_points[i], -tangent, tangent)
-	# Close the loop by repeating the first point (same handles).
-	var prev0 := anchor_points[n - 1]
-	var next0 := anchor_points[1]
-	var tan0 := (next0 - prev0) * smoothness
-	c.add_point(anchor_points[0], -tan0, tan0)
+	for i in n + 1:
+		var idx := i % n
+		var a := anchor_points[idx]
+		var prev := anchor_points[(idx - 1 + n) % n]
+		var next := anchor_points[(idx + 1) % n]
+		var dir := (next - prev).normalized()
+		var t_in := dir * (a.distance_to(prev) * smoothness)
+		var t_out := dir * (a.distance_to(next) * smoothness)
+		c.add_point(a, -t_in, t_out)
 	curve = c

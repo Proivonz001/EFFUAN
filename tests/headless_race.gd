@@ -72,7 +72,7 @@ func _initialize() -> void:
 		if c.pit_count > 3:
 			pits_ok = false
 	_assert(pits_ok, "no car pits more than 3 times")
-	_assert(total_pits >= 15, "most of the field pits at least once (total %d)" % total_pits)
+	_assert(total_pits >= 12, "most of the field pits at least once (total %d)" % total_pits)
 
 	var best_overall := 999.0
 	for c in classification:

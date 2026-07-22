@@ -17,6 +17,9 @@ static var DETAILS_TEX: Texture2D = preload("res://assets/cars/car_details.svg")
 
 var car: CarData
 var renderer: TrackRenderer
+## True while the field is formed up pre-start: the car sits exactly on its
+## painted grid box. Released by RaceManager when the lights go out.
+var grid_hold := false
 
 var _visual_offset := 0.0
 var _lane_current := 0.0
@@ -116,6 +119,21 @@ func _target_offset() -> float:
 
 func _apply_transform(delta: float) -> void:
 	var L := renderer.baked_length()
+
+	# Formation: sit exactly on the painted grid box until lights out.
+	# Only the player's tags stay visible — 20 labels in 200px is just noise.
+	if grid_hold:
+		var slot := TrackRenderer.grid_slot_transform(car.grid_pos)
+		var off: float = fposmod(slot.offset, L)
+		var p := renderer.sample(off)
+		var dir := renderer.direction_at(off)
+		var perp := Vector2(-dir.y, dir.x)
+		position = p + perp * slot.lane
+		rotation = dir.angle()
+		_visual_offset = off
+		if _tag:
+			_tag.visible = car.is_player
+		return
 
 	# Pit stop: park beside the start line instead of freezing on the racing line.
 	if car.in_pit:

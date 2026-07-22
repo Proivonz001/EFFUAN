@@ -10,3 +10,6 @@ enum Type { STRAIGHT, CORNER }
 @export var drs_zone: bool = false
 ## 1.0 = normal, lower = easier passing zone (long straight into heavy braking).
 @export var overtaking_difficulty: float = 1.0
+## Visual track width multiplier (1.1-1.25 on the grid straight and heavy
+## braking zones, like real circuits). Purely presentational.
+@export_range(0.8, 1.4) var width_scale: float = 1.0

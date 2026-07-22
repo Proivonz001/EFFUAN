@@ -44,7 +44,7 @@ const NOISE_SIGMA_PER_CONSISTENCY := 0.0025
 
 # Battles.
 const MIN_GAP_S := 0.4               # train clamp distance behind a blocked leader
-const ATTACK_COOLDOWN_SEGMENTS := 4
+const ATTACK_COOLDOWN_SEGMENTS := 5
 
 # Race procedure.
 const START_SPACING_M := 7.0

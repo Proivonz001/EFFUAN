@@ -33,6 +33,9 @@ var _baked_len: float = 0.0
 var _label_font: Font
 ## Curve offset (px) where each segment starts; [n] = full length (wrap).
 var _seg_offsets: PackedFloat32Array = []
+## Smoothed visual width sampled every WIDTH_STEP px along the lap.
+const WIDTH_STEP := 7.0
+var _widths: PackedFloat32Array = []
 
 
 func _ready() -> void:
@@ -45,7 +48,39 @@ func _refresh() -> void:
 	_baked = path.curve.get_baked_points()
 	_baked_len = path.curve.get_baked_length()
 	_build_segment_offsets()
+	_build_widths()
 	queue_redraw()
+
+
+## Per-sample width from segment width_scale, smoothed so transitions flow.
+func _build_widths() -> void:
+	_widths.clear()
+	var n := int(ceil(_baked_len / WIDTH_STEP))
+	if n <= 0:
+		return
+	_widths.resize(n)
+	var seg := 0
+	for k in n:
+		var off := k * WIDTH_STEP
+		var w := TRACK_WIDTH
+		if track_data and not _seg_offsets.is_empty():
+			while seg < track_data.segment_count() - 1 and off >= _seg_offsets[seg + 1]:
+				seg += 1
+			w = TRACK_WIDTH * track_data.get_segment(seg).width_scale
+		_widths[k] = w
+	# Wrap-around box blur passes to melt the steps into ramps.
+	for pass_i in 4:
+		var out := _widths.duplicate()
+		for k in n:
+			out[k] = (_widths[(k - 2 + n) % n] + _widths[(k - 1 + n) % n] + _widths[k]
+					+ _widths[(k + 1) % n] + _widths[(k + 2) % n]) / 5.0
+		_widths = out
+
+
+func width_at(off: float) -> float:
+	if _widths.is_empty():
+		return TRACK_WIDTH
+	return _widths[int(fposmod(off, _baked_len) / WIDTH_STEP) % _widths.size()]
 
 
 ## Anchor-aligned sim->curve mapping (falls back to proportional-by-length).
@@ -110,22 +145,24 @@ func _draw() -> void:
 		_draw_scenery()
 	_draw_pit_lane()
 
-	# Asphalt ribbon + sampled edge lines (an offset polyline per side keeps
-	# the borders crisp in tight corners, unlike a wider white underlay).
-	draw_polyline(closed, ASPHALT.lerp(ASPHALT_WET, wetness), TRACK_WIDTH, true)
+	# Variable-width asphalt as a quad strip + crisp per-side edge lines.
+	var asphalt := ASPHALT.lerp(ASPHALT_WET, wetness)
 	var left_edge := PackedVector2Array()
 	var right_edge := PackedVector2Array()
-	var step := 7.0
 	var o := 0.0
-	while o <= _baked_len:
-		var p := sample(o)
-		var dir := direction_at(o)
+	while o <= _baked_len + WIDTH_STEP:
+		var off := minf(o, _baked_len)
+		var p := sample(off)
+		var dir := direction_at(off)
 		var perp := Vector2(-dir.y, dir.x)
-		left_edge.append(p - perp * (TRACK_WIDTH * 0.5 + 1.0))
-		right_edge.append(p + perp * (TRACK_WIDTH * 0.5 + 1.0))
-		o += step
-	left_edge.append(left_edge[0])
-	right_edge.append(right_edge[0])
+		var half := width_at(off) * 0.5
+		left_edge.append(p - perp * half)
+		right_edge.append(p + perp * half)
+		o += WIDTH_STEP
+	for i in range(left_edge.size() - 1):
+		draw_colored_polygon(PackedVector2Array([
+			left_edge[i], left_edge[i + 1], right_edge[i + 1], right_edge[i],
+		]), asphalt)
 	draw_polyline(left_edge, EDGE, 2.0, true)
 	draw_polyline(right_edge, EDGE, 2.0, true)
 
@@ -246,7 +283,7 @@ func _draw_kerbs() -> void:
 			var dir := (pb - pa).normalized()
 			var perp := Vector2(-dir.y, dir.x)
 			var col := KERB_RED if d % 2 == 0 else KERB_WHITE
-			var off := TRACK_WIDTH * 0.5 + 3.5
+			var off := width_at(lerpf(o0, o1, float(d) / dashes)) * 0.5 + 3.5
 			draw_line(pa + perp * off, pb + perp * off, col, 4.5)
 			draw_line(pa - perp * off, pb - perp * off, col, 4.5)
 		# Corner number, tucked outside the apex.
@@ -262,17 +299,29 @@ func _draw_kerbs() -> void:
 
 ## Staggered grid slot markers behind the start line (first 10 boxes only,
 ## so they stay on the straight).
+## One painted box per grid position, staggered in two columns (P1 ahead on
+## the right, P2 left, ...). Car2D parks each car on its own box pre-start.
+static func grid_slot_transform(grid_pos: int) -> Dictionary:
+	var i := grid_pos - 1
+	var row := i >> 1
+	return {
+		"offset": -34.0 - row * 17.0 - (8.0 if i % 2 == 1 else 0.0),
+		"lane": 8.0 if i % 2 == 0 else -8.0,
+	}
+
+
 func _draw_grid_slots() -> void:
-	for i in 10:
-		var off := fposmod(-26.0 - i * 14.0, _baked_len)
+	for grid_pos in range(1, 21):
+		var slot := grid_slot_transform(grid_pos)
+		var off: float = fposmod(slot.offset, _baked_len)
 		var p := sample(off)
 		var dir := direction_at(off)
 		var perp := Vector2(-dir.y, dir.x)
-		var lane := 7.0 if i % 2 == 0 else -7.0
-		var base := p + perp * lane
-		draw_line(base - perp * 4.5, base + perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
-		draw_line(base - perp * 4.5 + dir * 6.0, base - perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
-		draw_line(base + perp * 4.5 + dir * 6.0, base + perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
+		var base: Vector2 = p + perp * slot.lane
+		var col := Color(1, 1, 1, 0.30)
+		draw_line(base - perp * 5.0 + dir * 7.0, base + perp * 5.0 + dir * 7.0, col, 2.0)
+		draw_line(base - perp * 5.0 + dir * 7.0, base - perp * 5.0 - dir * 5.0, col, 2.0)
+		draw_line(base + perp * 5.0 + dir * 7.0, base + perp * 5.0 - dir * 5.0, col, 2.0)
 
 
 ## DRS zones as a thin stripe along the edge of the ribbon, off the racing line.
@@ -301,7 +350,7 @@ func _draw_start_line() -> void:
 	var p := sample(0.0)
 	var dir := direction_at(0.0)
 	var perp := Vector2(-dir.y, dir.x)
-	var half := TRACK_WIDTH * 0.5
+	var half := width_at(0.0) * 0.5
 	# Proper checkered strip: 2 rows x N cells across the track.
 	var cells := 8
 	var cell := half * 2.0 / cells

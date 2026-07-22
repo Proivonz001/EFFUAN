@@ -123,6 +123,9 @@ func _setup_race() -> void:
 	if "--autostart" in OS.get_cmdline_user_args():
 		paused = false
 	else:
+		# Form up on the painted grid until the lights go out.
+		for node: Car2D in _car_nodes:
+			node.grid_hold = true
 		_build_start_overlay.call_deferred()
 	leader_lap_changed.emit(1, engine.race_laps)
 	positions_changed.emit(engine.get_classification())
@@ -287,6 +290,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not race_running or paused:
 		return
+	if not _car_nodes.is_empty() and _car_nodes[0].grid_hold:
+		for node: Car2D in _car_nodes:
+			node.grid_hold = false
 	_accumulator += delta
 	while _accumulator >= SIM_TICK:
 		_accumulator -= SIM_TICK
@@ -373,8 +379,8 @@ func _compute_full_framing() -> void:
 	for p in pts:
 		bbox = bbox.expand(p)
 	bbox = bbox.grow(70.0)
-	_full_zoom = minf(1920.0 / bbox.size.x, 1080.0 / bbox.size.y) * 0.98
-	_full_center = bbox.get_center() - Vector2(60.0, 0.0)
+	_full_zoom = minf(1920.0 / bbox.size.x, 1080.0 / bbox.size.y) * 0.92
+	_full_center = bbox.get_center()
 
 
 func _update_camera(delta: float) -> void:
