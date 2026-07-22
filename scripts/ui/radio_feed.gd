@@ -111,18 +111,17 @@ func _poll_player_cars() -> void:
 
 		if car.tyre_temp_c > opt + 12.0:
 			_try("hot_%d" % car.index, 90.0,
-					"%s  |  Overheating the tyres — back off or go lean." % code, COL_WARN)
+					"%s  |  Overheating the tyres — back off." % code, COL_WARN)
 
 		if car.ers_charge >= 95.0 and car.ers_mode != CarData.ErsMode.DEPLOY \
 				and car.ers_mode != CarData.ErsMode.OVERTAKE:
 			_try("ers_%d" % car.index, 90.0,
 					"%s  |  Battery full — use it." % code, COL_NEUTRAL)
 
-		var laps_left: int = manager.engine.race_laps - car.laps_crossed
-		if car.fuel_kg < laps_left * RaceEngine.BASE_FUEL_BURN_LAP * 0.96 \
-				and car.fuel_mix != CarData.FuelMix.LEAN:
-			_try("fuel_%d" % car.index, 120.0,
-					"%s  |  Fuel is marginal — lean mix now." % code, COL_WARN)
+		if car.overtake_available and car.ers_mode != CarData.ErsMode.OVERTAKE \
+				and car.ers_charge > 25.0:
+			_try("ovt_%d" % car.index, 60.0,
+					"%s  |  Inside 1s at detection — OVERTAKE is armed." % code, COL_GOOD)
 
 		var gaps: Array = manager.gaps_around(car)
 		if gaps[0] > 0.0 and gaps[0] < 1.0 and not manager.engine.sc_active:

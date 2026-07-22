@@ -16,7 +16,7 @@ point_count = 26
 [node name="TrackPath" type="Path2D" parent="." unique_id=898304791]
 curve = SubResource("Curve2D_fc86t")
 script = ExtResource("1_nkce4")
-anchor_points = PackedVector2Array(400, 810, 950, 815, 1500, 810, 1590, 780, 1610, 725, 1660, 560, 1680, 420, 1670, 340, 1620, 290, 1500, 220, 1390, 160, 1260, 130, 1080, 115, 980, 130, 930, 180, 830, 300, 740, 370, 650, 390, 450, 470, 330, 560, 300, 640, 280, 700, 295, 750, 315, 780, 355, 800)
+anchor_points = PackedVector2Array(700, 813, 1150, 812, 1500, 810, 1590, 780, 1610, 725, 1660, 560, 1680, 420, 1670, 340, 1620, 290, 1500, 220, 1390, 160, 1260, 130, 1080, 115, 980, 130, 930, 180, 830, 300, 740, 370, 650, 390, 450, 470, 330, 560, 300, 640, 280, 700, 295, 750, 315, 780, 355, 800, 430, 810)
 
 [node name="TrackRenderer" type="Node2D" parent="." unique_id=1810221628 node_paths=PackedStringArray("path")]
 script = ExtResource("2_elqg0")

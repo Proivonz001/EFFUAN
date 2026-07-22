@@ -107,6 +107,7 @@ var _rng := RandomNumberGenerator.new()
 ## Time already consumed inside the current tick when a segment completes —
 ## gives lap/finish times millisecond precision instead of tick quantization.
 var _tick_time_offset := 0.0
+var _start_compound_ids: Array = []  # per-entry pre-race tyre choice ("" = AI default)
 var _allowed_compounds: Array = []   # Array[TyreCompound]
 var _track_len: float = 0.0
 var _seg_base_times: PackedFloat32Array = []
@@ -138,6 +139,7 @@ func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: A
 		weather = p_weather
 
 	cars.clear()
+	_start_compound_ids.clear()
 	for entry in entries:
 		var car := CarData.new()
 		car.index = cars.size()
@@ -147,7 +149,11 @@ func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: A
 		car.setup_bias = entry.get("setup_bias", track.df_bias)
 		car.confidence = entry.get("confidence", 50.0)
 		car.reliability = entry.get("reliability", 90.0)
-		car.fuel_kg = race_laps * BASE_FUEL_BURN_LAP * FUEL_LOAD_MARGIN
+		# Fuel mix is a pre-race commitment: richer mix = more pace but a
+		# heavier starting fuel load (and vice versa). No mid-race changes.
+		car.fuel_mix = entry.get("fuel_mix", CarData.FuelMix.STANDARD)
+		car.fuel_kg = race_laps * BASE_FUEL_BURN_LAP * MIX_BURN[car.fuel_mix] * FUEL_LOAD_MARGIN
+		_start_compound_ids.append(entry.get("start_compound_id", ""))
 		cars.append(car)
 
 	if use_entry_order:
@@ -162,12 +168,12 @@ func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: A
 		car.segment_time = _compute_segment_time(car)
 
 
+## OVERTAKE needs an earned token (within 1s at the detection point last lap).
 func set_ers_mode(car_index: int, mode: int) -> void:
-	cars[car_index].ers_mode = mode
-
-
-func set_fuel_mix(car_index: int, mix: int) -> void:
-	cars[car_index].fuel_mix = mix
+	var car: CarData = cars[car_index]
+	if mode == CarData.ErsMode.OVERTAKE and not car.overtake_available:
+		return
+	car.ers_mode = mode
 
 
 func request_pit(car_index: int, compound: TyreCompound) -> void:
@@ -319,6 +325,13 @@ func _on_line_crossed(car: CarData) -> void:
 		events.append({"type": "lap", "car": car, "lap": car.laps_crossed, "time": lap_time})
 	car.current_lap_start_time = now
 	car.lap = mini(car.laps_crossed + 1, race_laps)
+
+	# Detection point: the boost token refreshes every time the line is crossed.
+	# An active OVERTAKE expires here (one lap of boost per token).
+	if car.ers_mode == CarData.ErsMode.OVERTAKE:
+		car.ers_mode = CarData.ErsMode.NEUTRAL
+	car.overtake_available = car.laps_crossed >= 1 and car.gap_ahead_s < 1.0 \
+			and not car.finished
 
 	if car.laps_crossed >= race_laps:
 		car.finished = true
@@ -579,24 +592,15 @@ func _ai_lap_decisions(car: CarData) -> void:
 		_enter_pit(car)
 		return
 
-	# ERS heuristic.
+	# ERS heuristic (fuel mix is locked pre-race for everyone).
 	if car.ers_charge < 15.0:
 		car.ers_mode = CarData.ErsMode.HARVEST
-	elif car.gap_ahead_s < 0.8 and car.ers_charge > 35.0:
+	elif car.overtake_available and car.gap_ahead_s < 0.8 and car.ers_charge > 35.0:
 		car.ers_mode = CarData.ErsMode.OVERTAKE
 	elif car.ers_charge > 75.0:
 		car.ers_mode = CarData.ErsMode.DEPLOY
 	else:
 		car.ers_mode = CarData.ErsMode.NEUTRAL
-
-	# Fuel heuristic.
-	var needed := laps_remaining * BASE_FUEL_BURN_LAP
-	if car.fuel_kg < needed * 0.97:
-		car.fuel_mix = CarData.FuelMix.LEAN
-	elif car.fuel_kg > needed * 1.08:
-		car.fuel_mix = CarData.FuelMix.RICH
-	else:
-		car.fuel_mix = CarData.FuelMix.STANDARD
 
 
 func _ai_pick_compound(laps_remaining: int) -> TyreCompound:
@@ -635,9 +639,15 @@ func _place_grid() -> void:
 		forced = _find_compound("wet")
 	elif weather.wetness > AI_TO_INTER:
 		forced = _find_compound("inter")
-	for car in cars:
+	for i in cars.size():
+		var car: CarData = cars[i]
+		var chosen: TyreCompound = null
+		if car.is_player and _start_compound_ids[i] != "":
+			chosen = _find_compound(_start_compound_ids[i])
 		if forced:
 			car.compound = forced
+		elif chosen:
+			car.compound = chosen
 		else:
 			car.compound = soft if (car.grid_pos <= 12 or medium == null) else medium
 		car.pit_target_compound = medium if medium else soft

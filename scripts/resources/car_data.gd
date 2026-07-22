@@ -24,9 +24,13 @@ var compound: TyreCompound
 
 # --- pit wall commands ---
 var ers_mode: ErsMode = ErsMode.NEUTRAL
+## Locked for the whole race — chosen pre-race with the starting tyres.
 var fuel_mix: FuelMix = FuelMix.STANDARD
 var pit_requested: bool = false
 var pit_target_compound: TyreCompound
+## OVERTAKE boost token: earned by being within 1s at the detection point
+## (the s/f line) on the previous lap; consumed on activation.
+var overtake_available: bool = false
 
 # --- sim position ---
 var lap: int = 0                      # display lap, 1-based once the line is crossed

@@ -42,6 +42,8 @@ var confidence := {}
 var pending_setup_bias := 0.0
 var pending_grid: Array = []         # entries pre-sorted by qualifying
 var pending_weather: WeatherSystem = null
+## Pre-race commitments per player driver: driver_id -> {compound: id, mix: 0|1|2}
+var pending_car_setups := {}
 
 # Post-race / season-end display caches.
 var last_player_result: Array = []   # engine classification (CarData refs)
@@ -129,12 +131,15 @@ func build_entries(series_id: String) -> Array:
 			var is_player: bool = tid == player_team_id
 			var bias: float = pending_setup_bias if is_player \
 					else clampf(track.df_bias + rng.randfn(0.0, 0.18), -1.0, 1.0)
+			var car_setup: Dictionary = pending_car_setups.get(did, {}) if is_player else {}
 			out.append({
 				"team": eff,
 				"driver": GameData.drivers[did],
 				"setup_bias": bias,
 				"confidence": confidence.get(did, 50.0),
 				"reliability": eff.stat_reliability,
+				"start_compound_id": car_setup.get("compound", ""),
+				"fuel_mix": int(car_setup.get("mix", CarData.FuelMix.STANDARD)),
 			})
 	return out
 

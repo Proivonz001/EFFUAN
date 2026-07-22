@@ -97,16 +97,61 @@ func _ready() -> void:
 	left.add_child(_engineer)
 	_update_setup_readout()
 
-	# Driver confidence card.
+	left.add_child(HSeparator.new())
+	var strat_head := Label.new()
+	strat_head.text = "RACE COMMITMENTS — starting tyres & fuel mode (locked for the race)"
+	strat_head.add_theme_font_size_override("font_size", 13)
+	strat_head.add_theme_color_override("font_color", UIKit.TEXT_FAINT)
+	left.add_child(strat_head)
+
+	# Per-driver pre-race choices: starting compound + fuel mode.
 	var team: TeamData = GameData.teams[GameState.player_team_id]
 	for did in team.driver_ids:
 		var d: DriverData = GameData.drivers[did]
-		var row := Label.new()
-		row.text = "%s (%s)  —  confidence %d" % [d.driver_name, d.code,
+		if not GameState.pending_car_setups.has(did):
+			GameState.pending_car_setups[did] = {"compound": "soft", "mix": 1}
+		var setup: Dictionary = GameState.pending_car_setups[did]
+
+		var name_row := Label.new()
+		name_row.text = "%s (%s)  —  confidence %d" % [d.driver_name, d.code,
 				int(GameState.confidence.get(did, 50.0))]
-		row.add_theme_font_size_override("font_size", 14)
-		row.add_theme_color_override("font_color", Color(0.8, 0.82, 0.88))
+		name_row.add_theme_font_size_override("font_size", 15)
+		left.add_child(name_row)
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
 		left.add_child(row)
+		var tyre_buttons: Array = []
+		for cid in ["soft", "medium", "hard"]:
+			var compound := GameData.get_compound(cid)
+			var b := UIKit.button(cid.substr(0, 1).to_upper(), Vector2(46, 40), 15)
+			b.add_theme_color_override("font_color", compound.display_color)
+			row.add_child(b)
+			tyre_buttons.append({"b": b, "id": cid})
+		row.add_child(UIKit.label("  ", 13))
+		var mix_buttons: Array = []
+		var mix_hints := ["LEAN\nlight start, less pace", "STD\nbalanced", "RICH\nmore pace, heavy start"]
+		for m in 3:
+			var b := UIKit.button(mix_hints[m], Vector2(150, 44), 11)
+			row.add_child(b)
+			mix_buttons.append(b)
+
+		var sync := func() -> void:
+			for tb in tyre_buttons:
+				UIKit.set_active(tb.b, tb.id == setup.compound)
+			for m in 3:
+				UIKit.set_active(mix_buttons[m], m == int(setup.mix))
+		for tb in tyre_buttons:
+			var cid_c: String = tb.id
+			tb.b.pressed.connect(func() -> void:
+				setup.compound = cid_c
+				sync.call())
+		for m in 3:
+			var m_c := m
+			mix_buttons[m].pressed.connect(func() -> void:
+				setup.mix = m_c
+				sync.call())
+		sync.call()
 
 	left.add_child(_vspacer())
 

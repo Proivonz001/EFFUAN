@@ -86,7 +86,7 @@ func _initialize() -> void:
 	print("Field spread P1->P20: %.1f s" % spread)
 	_assert(spread > 10.0 and spread < 150.0, "field spread 10-150s (got %.1f)" % spread)
 
-	_assert(overtakes >= 10 and overtakes <= 120, "10-120 overtakes per race (got %d)" % overtakes)
+	_assert(overtakes >= 10 and overtakes <= 140, "10-140 overtakes per race (got %d)" % overtakes)
 
 	# Determinism: same seed, same winner and same winning time.
 	var engine2 := RaceEngine.new()

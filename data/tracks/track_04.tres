@@ -1,4 +1,4 @@
-[gd_resource type="Resource" load_steps=18 format=3]
+[gd_resource type="Resource" load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/track_segment.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/resources/track_data.gd" id="2"]
@@ -6,10 +6,11 @@
 [sub_resource type="Resource" id="seg1"]
 script = ExtResource("1")
 type = 0
-length_m = 750.0
+length_m = 530.0
 corner_class = 0
 drs_zone = true
 overtaking_difficulty = 0.55
+width_scale = 1.15
 
 [sub_resource type="Resource" id="seg2"]
 script = ExtResource("1")
@@ -18,6 +19,7 @@ length_m = 80.0
 corner_class = 1
 drs_zone = false
 overtaking_difficulty = 0.85
+width_scale = 1.2
 
 [sub_resource type="Resource" id="seg3"]
 script = ExtResource("1")
@@ -50,6 +52,7 @@ length_m = 90.0
 corner_class = 1
 drs_zone = false
 overtaking_difficulty = 0.95
+width_scale = 1.2
 
 [sub_resource type="Resource" id="seg7"]
 script = ExtResource("1")
@@ -131,14 +134,23 @@ corner_class = 2
 drs_zone = false
 overtaking_difficulty = 1.4
 
+[sub_resource type="Resource" id="seg17"]
+script = ExtResource("1")
+type = 0
+length_m = 220.0
+corner_class = 0
+drs_zone = false
+overtaking_difficulty = 1.2
+width_scale = 1.15
+
 [resource]
 script = ExtResource("2")
 id = "track_04"
 track_name = "Baia Azzurra"
-segments = [SubResource("seg1"), SubResource("seg2"), SubResource("seg3"), SubResource("seg4"), SubResource("seg5"), SubResource("seg6"), SubResource("seg7"), SubResource("seg8"), SubResource("seg9"), SubResource("seg10"), SubResource("seg11"), SubResource("seg12"), SubResource("seg13"), SubResource("seg14"), SubResource("seg15"), SubResource("seg16")]
+segments = [SubResource("seg1"), SubResource("seg2"), SubResource("seg3"), SubResource("seg4"), SubResource("seg5"), SubResource("seg6"), SubResource("seg7"), SubResource("seg8"), SubResource("seg9"), SubResource("seg10"), SubResource("seg11"), SubResource("seg12"), SubResource("seg13"), SubResource("seg14"), SubResource("seg15"), SubResource("seg16"), SubResource("seg17")]
 pit_lane_time_loss = 23.0
 df_bias = 0.3
 base_lap_time = 71.5
 ambient_temp_c = 25.0
 scene_path = "res://scenes/race/tracks/track_04.tscn"
-segment_anchor_indices = PackedInt32Array(0, 2, 4, 5, 7, 8, 10, 12, 14, 16, 18, 19, 21, 23, 25, 27)
+segment_anchor_indices = PackedInt32Array(0, 2, 4, 5, 7, 8, 10, 12, 14, 16, 18, 19, 21, 23, 25, 27, 29)

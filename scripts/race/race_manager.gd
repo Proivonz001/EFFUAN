@@ -519,10 +519,6 @@ func cmd_set_ers(car: CarData, mode: int) -> void:
 	engine.set_ers_mode(car.index, mode)
 
 
-func cmd_set_mix(car: CarData, mix: int) -> void:
-	engine.set_fuel_mix(car.index, mix)
-
-
 func cmd_toggle_pit(car: CarData, compound: TyreCompound) -> void:
 	if car.pit_requested:
 		engine.cancel_pit(car.index)
