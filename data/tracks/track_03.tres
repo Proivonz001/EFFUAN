@@ -6,7 +6,7 @@
 [sub_resource type="Resource" id="seg1"]
 script = ExtResource("1")
 type = 0
-length_m = 340.0
+length_m = 255.0
 corner_class = 0
 drs_zone = true
 overtaking_difficulty = 0.6
@@ -161,7 +161,7 @@ overtaking_difficulty = 1.7
 [sub_resource type="Resource" id="seg20"]
 script = ExtResource("1")
 type = 0
-length_m = 260.0
+length_m = 345.0
 corner_class = 0
 drs_zone = false
 overtaking_difficulty = 1.2

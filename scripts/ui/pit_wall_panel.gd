@@ -20,50 +20,57 @@ func _ready() -> void:
 	if players.is_empty():
 		visible = false
 		return
-	self_modulate = Color(1, 1, 1, 0.94)
-	anchor_left = 1.0
+	# Full-width telemetry bar along the bottom: the camera reserves this space
+	# (RaceManager.USABLE_RECT), so the HUD never covers the circuit.
+	self_modulate = Color(1, 1, 1, 0.96)
+	anchor_left = 0.0
 	anchor_top = 1.0
 	anchor_right = 1.0
 	anchor_bottom = 1.0
-	offset_left = -988.0
-	offset_top = -368.0
-	offset_right = -24.0
-	offset_bottom = -24.0
+	offset_left = 12.0
+	offset_top = -264.0
+	offset_right = -12.0
+	offset_bottom = -10.0
 
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	add_child(v)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	add_child(row)
 
-	# Session strip.
-	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", 8)
-	v.add_child(strip)
-	_cam_button = UIKit.button("CAM FULL", Vector2(110, 40), 13, func() -> void:
+	# Left slot stays clear: the radio feed floats there.
+	var radio_slot := Control.new()
+	radio_slot.custom_minimum_size = Vector2(400, 0)
+	row.add_child(radio_slot)
+
+	for car: CarData in players:
+		var card := DriverCard.new()
+		row.add_child(card)
+		card.setup(manager, car)
+
+	row.add_child(UIKit.hspacer())
+
+	# Session strip, vertical at the far right.
+	var strip := VBoxContainer.new()
+	strip.add_theme_constant_override("separation", 6)
+	row.add_child(strip)
+	_cam_button = UIKit.button("CAM FULL", Vector2(150, 42), 13, func() -> void:
 		manager.cycle_camera()
 		_refresh())
 	strip.add_child(_cam_button)
-	strip.add_child(UIKit.hspacer())
-	_pause_button = UIKit.button("❚❚ PAUSE", Vector2(110, 40), 13, func() -> void:
+	_pause_button = UIKit.button("❚❚ PAUSE", Vector2(150, 42), 13, func() -> void:
 		manager.toggle_pause()
 		_refresh())
 	strip.add_child(_pause_button)
+	var speeds := HBoxContainer.new()
+	speeds.add_theme_constant_override("separation", 4)
+	strip.add_child(speeds)
 	for i in RaceManager.TIME_SCALES.size():
 		var idx := i
-		var b := UIKit.button("%d×" % int(RaceManager.TIME_SCALES[i]), Vector2(52, 40), 13,
+		var b := UIKit.button("%d×" % int(RaceManager.TIME_SCALES[i]), Vector2(47, 40), 13,
 				func() -> void:
 					manager.set_time_scale(idx)
 					_refresh())
-		strip.add_child(b)
+		speeds.add_child(b)
 		_speed_buttons.append(b)
-
-	# The two driver cards.
-	var cards := HBoxContainer.new()
-	cards.add_theme_constant_override("separation", 10)
-	v.add_child(cards)
-	for car: CarData in players:
-		var card := DriverCard.new()
-		cards.add_child(card)
-		card.setup(manager, car)
 	_refresh()
 
 

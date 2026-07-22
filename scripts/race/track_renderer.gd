@@ -178,7 +178,7 @@ func _draw() -> void:
 func _draw_pit_lane() -> void:
 	var lane_pts := PackedVector2Array()
 	var step := 14.0
-	var o := -340.0
+	var o := -520.0
 	while o <= 70.0:
 		var off := fposmod(o, _baked_len)
 		var p := sample(off)
@@ -186,8 +186,8 @@ func _draw_pit_lane() -> void:
 		var perp := Vector2(-dir.y, dir.x)
 		# Taper in/out at the ends so the lane merges into the track edge.
 		var depth := PIT_LANE_DEPTH
-		if o < -285.0:
-			depth = remap(o, -340.0, -285.0, 4.0, PIT_LANE_DEPTH)
+		if o < -455.0:
+			depth = remap(o, -520.0, -455.0, 4.0, PIT_LANE_DEPTH)
 		elif o > 25.0:
 			depth = remap(o, 25.0, 70.0, PIT_LANE_DEPTH, 4.0)
 		lane_pts.append(p - perp * depth)
@@ -196,7 +196,7 @@ func _draw_pit_lane() -> void:
 	draw_polyline(lane_pts, Color(0.12, 0.13, 0.155), 12.0)
 
 	# Pit building block behind the boxes + label.
-	var mid_off := fposmod(-140.0, _baked_len)
+	var mid_off := fposmod(-230.0, _baked_len)
 	var mp := sample(mid_off)
 	var mdir := direction_at(mid_off)
 	var mperp := Vector2(-mdir.y, mdir.x)
@@ -301,11 +301,12 @@ func _draw_kerbs() -> void:
 ## so they stay on the straight).
 ## One painted box per grid position, staggered in two columns (P1 ahead on
 ## the right, P2 left, ...). Car2D parks each car on its own box pre-start.
+## F1-realistic spacing: row pitch ~1.6 car lengths, columns staggered.
 static func grid_slot_transform(grid_pos: int) -> Dictionary:
 	var i := grid_pos - 1
 	var row := i >> 1
 	return {
-		"offset": -40.0 - row * 26.0 - (11.0 if i % 2 == 1 else 0.0),
+		"offset": -46.0 - row * 42.0 - (16.0 if i % 2 == 1 else 0.0),
 		"lane": 9.0 if i % 2 == 0 else -9.0,
 	}
 

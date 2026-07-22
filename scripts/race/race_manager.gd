@@ -372,8 +372,11 @@ var _full_center := Vector2(960, 540)
 var _full_zoom := 1.0
 
 
-## FULL framing: fit the track bbox in the viewport with a small margin,
-## nudged right so the timing tower overlaps empty space, not the circuit.
+## FULL framing: fit the track into the screen region NOT covered by permanent
+## HUD (timing tower on the left, telemetry bar at the bottom) so the circuit
+## and the interface never overlap.
+const USABLE_RECT := Rect2(370, 30, 1520, 770)
+
 func _compute_full_framing() -> void:
 	if _renderer == null or _renderer.path == null or _renderer.path.curve == null:
 		return
@@ -383,9 +386,12 @@ func _compute_full_framing() -> void:
 	var bbox := Rect2(pts[0], Vector2.ZERO)
 	for p in pts:
 		bbox = bbox.expand(p)
-	bbox = bbox.grow(70.0)
-	_full_zoom = minf(1920.0 / bbox.size.x, 1080.0 / bbox.size.y) * 0.92
-	_full_center = bbox.get_center()
+	bbox = bbox.grow(60.0)
+	_full_zoom = minf(USABLE_RECT.size.x / bbox.size.x, USABLE_RECT.size.y / bbox.size.y) * 0.99
+	# camera.position is the world point at SCREEN center; shift it so the
+	# track center lands on the usable-area center instead.
+	var screen_center := Vector2(960, 540)
+	_full_center = bbox.get_center() + (screen_center - USABLE_RECT.get_center()) / _full_zoom
 
 
 func _update_camera(delta: float) -> void:

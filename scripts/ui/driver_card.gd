@@ -37,7 +37,7 @@ func setup(p_manager: RaceManager, p_car: CarData) -> void:
 
 func _build() -> void:
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
+	v.add_theme_constant_override("separation", 4)
 	add_child(v)
 
 	# Header: color bar + code + name + live gaps.
@@ -57,7 +57,7 @@ func _build() -> void:
 
 	# Vector gauge strip (battery / tyre / fuel).
 	_gauges = Control.new()
-	_gauges.custom_minimum_size = Vector2(0, 92)
+	_gauges.custom_minimum_size = Vector2(0, 84)
 	_gauges.draw.connect(_draw_gauges)
 	v.add_child(_gauges)
 
@@ -182,8 +182,8 @@ func _draw_gauges() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIKit.TEXT_DIM)
 
 	# --- tyre: wear ring + temperature core ---
-	var center := Vector2(392, 39)
-	var radius := 26.0
+	var center := Vector2(392, 34)
+	var radius := 24.0
 	_gauges.draw_arc(center, radius, 0, TAU, 40, Color(0.16, 0.175, 0.21), 7.0, true)
 	var remaining := 1.0 - car.tyre_wear
 	if remaining > 0.01:

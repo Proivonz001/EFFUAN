@@ -13,12 +13,14 @@ var _timer := 0.0
 
 func _ready() -> void:
 	manager = get_node("../..")
+	# Left column, under the timing tower — clear of the track area.
 	self_modulate = Color(1, 1, 1, 0.92)
-	anchor_left = 1.0
-	anchor_right = 1.0
-	offset_left = -280.0
-	offset_top = 24.0
-	offset_right = -24.0
+	anchor_top = 1.0
+	anchor_bottom = 1.0
+	offset_left = 24.0
+	offset_right = 344.0
+	offset_top = -438.0
+	offset_bottom = -282.0
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)

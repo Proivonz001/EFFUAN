@@ -29,7 +29,7 @@ func _build() -> void:
 	self_modulate = Color(1, 1, 1, 0.92)
 	position = Vector2(24, 24)
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", 0)
 	add_child(vbox)
 
 	_title_label = Label.new()

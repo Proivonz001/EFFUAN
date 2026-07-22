@@ -23,13 +23,15 @@ var _last_forecast := ""
 
 func _ready() -> void:
 	manager = get_node("../..")
+	# Lives in the left slot of the telemetry bar.
 	anchor_top = 1.0
 	anchor_bottom = 1.0
-	offset_left = 24.0
-	offset_top = -330.0
-	offset_bottom = -24.0
+	offset_left = 26.0
+	offset_right = 410.0
+	offset_top = -250.0
+	offset_bottom = -18.0
 	alignment = BoxContainer.ALIGNMENT_END
-	add_theme_constant_override("separation", 4)
+	add_theme_constant_override("separation", 3)
 
 	manager.pit_event.connect(_on_pit)
 	manager.dnf_happened.connect(_on_dnf)
@@ -166,7 +168,9 @@ func _say(text: String, color: Color) -> void:
 	Sfx.radio()
 	var label := Label.new()
 	label.text = "RADIO ›  " + text
-	label.add_theme_font_size_override("font_size", 15)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(370, 0)
+	label.add_theme_font_size_override("font_size", 13)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	label.add_theme_constant_override("shadow_offset_x", 1)
