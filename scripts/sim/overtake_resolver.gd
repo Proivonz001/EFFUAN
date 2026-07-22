@@ -41,6 +41,11 @@ static func _resolve_pair(engine: RaceEngine, leader: CarData, follower: CarData
 	follower.in_battle = true
 	leader.in_battle = true
 
+	# No overtaking under safety car — queue up only.
+	if engine.sc_active:
+		engine.set_race_distance(follower, leader.race_distance_m - min_gap_m)
+		return
+
 	if follower.attack_cooldown == 0:
 		var chance := _pass_chance(engine, leader, follower)
 		follower.attack_cooldown = RaceEngine.ATTACK_COOLDOWN_SEGMENTS

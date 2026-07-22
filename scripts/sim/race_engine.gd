@@ -72,6 +72,15 @@ const AI_TO_SLICK := 0.16
 # Reliability -> mechanical failure. fail/lap at reliability 100 and 70.
 const FAIL_PER_LAP_BEST := 0.00015
 const FAIL_PER_LAP_WORST := 0.0045
+
+# Safety car.
+const SC_CHANCE_ON_DNF := 0.55
+const SC_MIN_LAPS_LEFT := 3          # no SC this close to the flag
+const SC_QUEUE_PACE := 1.45          # segment-time multiplier at the head of the queue
+const SC_CATCH_PACE := 1.16          # cars far from the queue close in at this pace
+const SC_CATCH_GAP_S := 1.5
+const SC_TEMP_PUSH := 0.55           # tyres cool down behind the safety car
+const SC_ERS_BONUS_LAP := 4.0        # free harvesting under SC
 # ------------------------------------------------------------------------------
 
 var track: TrackData
@@ -82,6 +91,12 @@ var events: Array = []               # dicts drained by RaceManager each tick
 var sim_time: float = 0.0
 var race_over: bool = false
 var weather := WeatherSystem.new()   # DRY unless setup() gets a configured one
+
+# Safety car state.
+var sc_active := false
+var sc_ending := false               # "safety car in this lap"
+var _sc_laps_remaining := 0
+var _sc_leader_lap_seen := -1
 
 var _rng := RandomNumberGenerator.new()
 var _allowed_compounds: Array = []   # Array[TyreCompound]
@@ -171,9 +186,39 @@ func tick(sim_dt: float) -> void:
 	order.sort_custom(_position_sort)
 	_update_gaps()
 	OvertakeResolver.resolve_all(self)
+	_update_safety_car()
 	if _all_finished():
 		race_over = true
 		events.append({"type": "race_finished"})
+
+
+func _update_safety_car() -> void:
+	if not sc_active or order.is_empty():
+		return
+	var leader: CarData = order[0]
+	if leader.laps_crossed <= _sc_leader_lap_seen:
+		return
+	_sc_leader_lap_seen = leader.laps_crossed
+	if sc_ending:
+		sc_active = false
+		sc_ending = false
+		events.append({"type": "sc", "phase": "restart"})
+	else:
+		_sc_laps_remaining -= 1
+		if _sc_laps_remaining <= 0:
+			sc_ending = true
+			events.append({"type": "sc", "phase": "ending"})
+
+
+func _try_deploy_safety_car(cause_car: CarData) -> void:
+	if sc_active or race_laps - cause_car.laps_crossed < SC_MIN_LAPS_LEFT:
+		return
+	if _rng.randf() < SC_CHANCE_ON_DNF:
+		sc_active = true
+		sc_ending = false
+		_sc_laps_remaining = _rng.randi_range(2, 3)
+		_sc_leader_lap_seen = order[0].laps_crossed if not order.is_empty() else 0
+		events.append({"type": "sc", "phase": "deployed"})
 
 
 func _advance_car(car: CarData, dt: float) -> void:
@@ -213,6 +258,7 @@ func _on_segment_complete(car: CarData) -> void:
 		car.dnf = true
 		car.in_battle = false
 		events.append({"type": "dnf", "car": car})
+		_try_deploy_safety_car(car)
 		return
 
 	car.segment_index += 1
@@ -279,6 +325,11 @@ func _compute_segment_time(car: CarData) -> float:
 	var is_corner := seg.type == TrackSegment.Type.CORNER
 	var t := base
 
+	# Safety car: a parade, not a race. Cars far behind close up to the queue.
+	if sc_active:
+		var in_queue: bool = car == order[0] or car.gap_ahead_s < SC_CATCH_GAP_S
+		return base * (SC_QUEUE_PACE if in_queue else SC_CATCH_PACE)
+
 	# Tyre grip (dominant on corners), including compound-vs-wetness match.
 	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c, weather.wetness)
 	var grip_strength := GRIP_TIME_CORNER if is_corner else GRIP_TIME_STRAIGHT
@@ -341,11 +392,15 @@ func _apply_segment_side_effects(car: CarData, seg: TrackSegment) -> void:
 	var charge_delta: float = ERS_CHARGE_LAP[mode] * share
 	if mode == CarData.ErsMode.HARVEST:
 		charge_delta *= 0.8 + 0.4 * (car.team.stat_power / 100.0)
+	if sc_active:
+		charge_delta += SC_ERS_BONUS_LAP * share
 	car.ers_charge = clampf(car.ers_charge + charge_delta, 0.0, 100.0)
 
 	# Tyre temperature.
 	var grip := TyreModel.grip(car.compound, car.tyre_wear, car.tyre_temp_c, weather.wetness)
 	var push := 1.0 + PUSH_SLIDING * (1.0 - grip)
+	if sc_active:
+		push = SC_TEMP_PUSH
 	match mode:
 		CarData.ErsMode.DEPLOY: push += PUSH_DEPLOY
 		CarData.ErsMode.OVERTAKE: push += PUSH_OVERTAKE
@@ -469,6 +524,13 @@ func _ai_lap_decisions(car: CarData) -> void:
 	if weather_target and weather_target != car.compound and laps_remaining >= 1:
 		car.pit_requested = true
 		car.pit_target_compound = weather_target
+		_enter_pit(car)
+		return
+
+	# Safety car = cheap stop: freshen up if the tyres are half gone.
+	if sc_active and not sc_ending and car.tyre_wear >= 0.45 and laps_remaining >= 4:
+		car.pit_requested = true
+		car.pit_target_compound = _ai_pick_compound(laps_remaining)
 		_enter_pit(car)
 		return
 

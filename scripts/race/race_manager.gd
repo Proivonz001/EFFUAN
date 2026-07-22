@@ -10,6 +10,8 @@ signal overtake_happened(attacker: CarData, defender: CarData)
 signal pit_event(car: CarData, entering: bool)
 signal race_finished(classification: Array)
 signal leader_lap_changed(lap: int, total: int)
+signal dnf_happened(car: CarData)
+signal sc_changed(phase: String)
 
 const SIM_TICK := 0.05
 const TIME_SCALES: Array[float] = [1.0, 4.0, 8.0]
@@ -177,6 +179,10 @@ func _drain_events() -> void:
 				pit_event.emit(ev.car, true)
 			"pit_out":
 				pit_event.emit(ev.car, false)
+			"dnf":
+				dnf_happened.emit(ev.car)
+			"sc":
+				sc_changed.emit(ev.phase)
 			"race_finished":
 				race_running = false
 				race_finished.emit(engine.get_classification())

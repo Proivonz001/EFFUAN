@@ -112,11 +112,23 @@ func _on_leader_lap(lap: int, total: int) -> void:
 	_lap_label.text = "LAP %d / %d" % [lap, total]
 
 
+func _sync_sc_banner() -> void:
+	var engine: RaceEngine = manager.engine
+	if engine.sc_active:
+		_lap_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2))
+		if not _lap_label.text.ends_with("SAFETY CAR"):
+			_lap_label.text += "   ⚠ SAFETY CAR"
+	else:
+		_lap_label.add_theme_color_override("font_color", Color.WHITE)
+		_lap_label.text = _lap_label.text.replace("   ⚠ SAFETY CAR", "")
+
+
 func _on_overtake(attacker: CarData, _defender: CarData) -> void:
 	_flash[attacker.index] = FLASH_TIME
 
 
 func _on_positions(order: Array) -> void:
+	_sync_sc_banner()
 	var leader: CarData = order[0]
 	for i in _rows.size():
 		var widgets: Dictionary = _rows[i]
