@@ -12,8 +12,9 @@ const EDGE := Color(0.85, 0.86, 0.88, 0.9)
 const DRS_COLOR := Color(0.15, 0.9, 0.45, 0.85)
 const KERB_RED := Color(0.82, 0.18, 0.16)
 const KERB_WHITE := Color(0.88, 0.88, 0.9)
-const TRACK_WIDTH := 34.0
+const TRACK_WIDTH := 28.0
 const KERB_DASH_PX := 14.0
+const PIT_LANE_DEPTH := 30.0
 
 @export var path: TrackPath
 @export var track_data: TrackData
@@ -109,9 +110,24 @@ func _draw() -> void:
 		_draw_scenery()
 	_draw_pit_lane()
 
-	# Ribbon: edge underlay then asphalt on top; rain darkens the surface.
-	draw_polyline(closed, EDGE, TRACK_WIDTH + 5.0, true)
+	# Asphalt ribbon + sampled edge lines (an offset polyline per side keeps
+	# the borders crisp in tight corners, unlike a wider white underlay).
 	draw_polyline(closed, ASPHALT.lerp(ASPHALT_WET, wetness), TRACK_WIDTH, true)
+	var left_edge := PackedVector2Array()
+	var right_edge := PackedVector2Array()
+	var step := 7.0
+	var o := 0.0
+	while o <= _baked_len:
+		var p := sample(o)
+		var dir := direction_at(o)
+		var perp := Vector2(-dir.y, dir.x)
+		left_edge.append(p - perp * (TRACK_WIDTH * 0.5 + 1.0))
+		right_edge.append(p + perp * (TRACK_WIDTH * 0.5 + 1.0))
+		o += step
+	left_edge.append(left_edge[0])
+	right_edge.append(right_edge[0])
+	draw_polyline(left_edge, EDGE, 2.0, true)
+	draw_polyline(right_edge, EDGE, 2.0, true)
 
 	if track_data:
 		_draw_kerbs()
@@ -132,11 +148,11 @@ func _draw_pit_lane() -> void:
 		var dir := direction_at(off)
 		var perp := Vector2(-dir.y, dir.x)
 		# Taper in/out at the ends so the lane merges into the track edge.
-		var depth := 34.0
+		var depth := PIT_LANE_DEPTH
 		if o < -230.0:
-			depth = remap(o, -280.0, -230.0, 4.0, 34.0)
+			depth = remap(o, -280.0, -230.0, 4.0, PIT_LANE_DEPTH)
 		elif o > 20.0:
-			depth = remap(o, 20.0, 60.0, 34.0, 4.0)
+			depth = remap(o, 20.0, 60.0, PIT_LANE_DEPTH, 4.0)
 		lane_pts.append(p - perp * depth)
 		o += step
 	draw_polyline(lane_pts, Color(0.75, 0.76, 0.8, 0.5), 15.0)

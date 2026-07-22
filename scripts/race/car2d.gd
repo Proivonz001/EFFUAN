@@ -5,12 +5,12 @@ extends Node2D
 ## offset. No signals, no sim writes.
 
 const SMOOTHING := 9.0               # 1/s — how fast the visual chases the sim position
-const LANE_BASE_PX := 5.0            # everyday side offset so cars don't stack
-const LANE_BATTLE_PX := 13.0         # widened while attacking/defending
+const LANE_BASE_PX := 4.0            # everyday side offset so cars don't stack
+const LANE_BATTLE_PX := 10.0         # widened while attacking/defending
 const TRAIL_LENGTH := 12
 const DRS_COLOR := Color(0.2, 1.0, 0.5)
 const ERS_COLOR := Color(1.0, 0.35, 0.9)
-const CAR_SCALE := 0.52              # SVG is 64px long -> ~33px on track
+const CAR_SCALE := 0.42              # SVG is 64px long -> ~27px on track
 
 static var LIVERY_TEX: Texture2D = preload("res://assets/cars/car_livery.svg")
 static var DETAILS_TEX: Texture2D = preload("res://assets/cars/car_details.svg")
@@ -26,7 +26,6 @@ var _livery: Sprite2D
 var _drs_flap: Polygon2D
 var _ers_dot: Polygon2D
 var _shadow: Sprite2D
-var _glow: Node2D
 var _trail: Line2D
 var _tag: Node2D
 var _tag_label: Label
@@ -46,19 +45,6 @@ func setup(p_car: CarData, p_renderer: TrackRenderer) -> void:
 	grad.set_color(1, Color(car.team.primary_color, 0.0))
 	_trail.gradient = grad
 	add_child(_trail)
-
-	if car.is_player:
-		_glow = Node2D.new()
-		add_child(_glow)
-		var ring := Line2D.new()
-		var pts := PackedVector2Array()
-		for i in 25:
-			var a := TAU * i / 24.0
-			pts.append(Vector2(cos(a), sin(a)) * 21.0)
-		ring.points = pts
-		ring.width = 2.0
-		ring.default_color = Color(1, 1, 1, 0.55)
-		_glow.add_child(ring)
 
 	# Sprite stack: shadow -> tinted livery -> neutral details -> indicators.
 	_gfx = Node2D.new()
@@ -99,13 +85,14 @@ func setup(p_car: CarData, p_renderer: TrackRenderer) -> void:
 	_gfx.add_child(_ers_dot)
 
 	# Driver code tag — counter-rotated child so it always reads horizontally.
+	# The player's cars are identified by their gold, larger tag.
 	_tag = Node2D.new()
 	add_child(_tag)
 	_tag_label = Label.new()
 	_tag_label.text = car.driver.code
-	_tag_label.add_theme_font_size_override("font_size", 11)
+	_tag_label.add_theme_font_size_override("font_size", 13 if car.is_player else 11)
 	_tag_label.add_theme_color_override("font_color",
-			Color.WHITE if car.is_player else Color(car.team.primary_color.lightened(0.35), 0.9))
+			Color(1.0, 0.84, 0.3) if car.is_player else Color(car.team.primary_color.lightened(0.35), 0.9))
 	_tag_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
 	_tag_label.add_theme_constant_override("shadow_offset_x", 1)
 	_tag_label.add_theme_constant_override("shadow_offset_y", 1)
@@ -135,7 +122,7 @@ func _apply_transform(delta: float) -> void:
 		var line_dir := renderer.direction_at(0.0)
 		var line_perp := Vector2(-line_dir.y, line_dir.x)
 		var slot := renderer.sample(fposmod(-70.0 - (car.index % 5) * 26.0, L)) \
-				- line_perp * 34.0
+				- line_perp * TrackRenderer.PIT_LANE_DEPTH
 		position = position.lerp(slot, minf(delta * 6.0, 1.0))
 		_visual_offset = fposmod(-70.0, L)
 		return

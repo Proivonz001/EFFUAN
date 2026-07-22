@@ -110,15 +110,12 @@ func _setup_race() -> void:
 		node.setup(car, _renderer)
 		_car_nodes.append(node)
 
-	# Broadcast camera + battle highlight overlay.
+	# Broadcast camera. FULL mode auto-fits the circuit's bounding box.
 	_camera = Camera2D.new()
 	_camera.position = Vector2(960, 540)
 	add_child(_camera)
 	_camera.make_current()
-	var battles := BattleOverlay.new()
-	battles.manager = self
-	battles.z_index = 5
-	add_child(battles)
+	_compute_full_framing()
 
 	race_running = true
 	if "--cam-car" in OS.get_cmdline_user_args():
@@ -360,11 +357,31 @@ func car_node(index: int) -> Car2D:
 
 # ---------------------------------------------------------- broadcast camera -
 
+var _full_center := Vector2(960, 540)
+var _full_zoom := 1.0
+
+
+## FULL framing: fit the track bbox in the viewport with a small margin,
+## nudged right so the timing tower overlaps empty space, not the circuit.
+func _compute_full_framing() -> void:
+	if _renderer == null or _renderer.path == null or _renderer.path.curve == null:
+		return
+	var pts := _renderer.path.curve.get_baked_points()
+	if pts.is_empty():
+		return
+	var bbox := Rect2(pts[0], Vector2.ZERO)
+	for p in pts:
+		bbox = bbox.expand(p)
+	bbox = bbox.grow(70.0)
+	_full_zoom = minf(1920.0 / bbox.size.x, 1080.0 / bbox.size.y) * 0.98
+	_full_center = bbox.get_center() - Vector2(60.0, 0.0)
+
+
 func _update_camera(delta: float) -> void:
 	if _camera == null:
 		return
-	var target := Vector2(960, 540)
-	var zoom := 1.0
+	var target := _full_center
+	var zoom := _full_zoom
 	match camera_mode:
 		1:   # TV: frame the most interesting battle, sticky for a few seconds.
 			_cam_battle_timer -= delta

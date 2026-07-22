@@ -26,7 +26,7 @@ func _rebuild() -> void:
 	if n < 3:
 		return
 	var c := Curve2D.new()
-	c.bake_interval = 8.0
+	c.bake_interval = 4.0
 	for i in n:
 		var prev := anchor_points[(i - 1 + n) % n]
 		var next := anchor_points[(i + 1) % n]
