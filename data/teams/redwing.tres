@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "redwing"
+team_name = "Redwing Apex"
+primary_color = Color(0.15, 0.25, 0.85, 1)
+stat_aero = 88.0
+stat_power = 87.0
+stat_chassis = 90.0
+driver_ids = PackedStringArray("ibarra", "aubert")

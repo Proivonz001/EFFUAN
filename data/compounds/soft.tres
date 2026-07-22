@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tyre_compound.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "soft"
+display_name = "Soft"
+display_color = Color(0.91, 0.16, 0.16, 1)
+base_grip = 1.0
+optimal_temp_c = 95.0
+temp_window_c = 10.0
+base_wear_per_lap = 0.042

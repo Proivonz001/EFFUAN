@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tyre_compound.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "wet"
+display_name = "Full Wet"
+display_color = Color(0.16, 0.42, 0.95, 1)
+base_grip = 0.9
+optimal_temp_c = 65.0
+temp_window_c = 18.0
+base_wear_per_lap = 0.024

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "vortex"
+team_name = "Vortex GP"
+primary_color = Color(0.86, 0.08, 0.1, 1)
+stat_aero = 92.0
+stat_power = 90.0
+stat_chassis = 88.0
+driver_ids = PackedStringArray("voss", "nakagawa")

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "nordwind"
+team_name = "Nordwind Racing"
+primary_color = Color(0.55, 0.8, 1.0, 1)
+stat_aero = 72.0
+stat_power = 75.0
+stat_chassis = 70.0
+driver_ids = PackedStringArray("lindqvist", "beck")

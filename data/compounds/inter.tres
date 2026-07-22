@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tyre_compound.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "inter"
+display_name = "Intermediate"
+display_color = Color(0.18, 0.75, 0.28, 1)
+base_grip = 0.94
+optimal_temp_c = 75.0
+temp_window_c = 15.0
+base_wear_per_lap = 0.03

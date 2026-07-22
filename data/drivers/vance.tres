@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "vance"
+driver_name = "Eddie Vance"
+code = "VAN"
+skill_pace = 68.0
+skill_consistency = 64.0
+skill_overtaking = 64.0
+skill_defending = 68.0
+skill_tyre_mgmt = 66.0

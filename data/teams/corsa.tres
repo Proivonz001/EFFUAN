@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "corsa"
+team_name = "Corsa Bianchi"
+primary_color = Color(0.92, 0.92, 0.95, 1)
+stat_aero = 75.0
+stat_power = 74.0
+stat_chassis = 78.0
+driver_ids = PackedStringArray("sacchi", "quintana")

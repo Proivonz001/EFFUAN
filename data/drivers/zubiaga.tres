@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "zubiaga"
+driver_name = "Aritz Zubiaga"
+code = "ZUB"
+skill_pace = 80.0
+skill_consistency = 76.0
+skill_overtaking = 74.0
+skill_defending = 78.0
+skill_tyre_mgmt = 84.0

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "dahl"
+driver_name = "Henrik Dahl"
+code = "DAH"
+skill_pace = 79.0
+skill_consistency = 82.0
+skill_overtaking = 70.0
+skill_defending = 76.0
+skill_tyre_mgmt = 82.0

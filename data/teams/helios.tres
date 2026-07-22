@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/team_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "helios"
+team_name = "Helios Racing"
+primary_color = Color(1.0, 0.85, 0.1, 1)
+stat_aero = 68.0
+stat_power = 66.0
+stat_chassis = 70.0
+driver_ids = PackedStringArray("mori", "whitfield")

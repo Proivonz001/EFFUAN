@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/driver_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "nakagawa"
+driver_name = "Rio Nakagawa"
+code = "NAK"
+skill_pace = 89.0
+skill_consistency = 84.0
+skill_overtaking = 82.0
+skill_defending = 80.0
+skill_tyre_mgmt = 88.0
