@@ -121,7 +121,7 @@ func _apply_transform(delta: float) -> void:
 	var L := renderer.baked_length()
 
 	# Formation: sit exactly on the painted grid box until lights out.
-	# Only the player's tags stay visible — 20 labels in 200px is just noise.
+	# The grid camera is zoomed in, so every code tag stays readable.
 	if grid_hold:
 		var slot := TrackRenderer.grid_slot_transform(car.grid_pos)
 		var off: float = fposmod(slot.offset, L)
@@ -131,8 +131,6 @@ func _apply_transform(delta: float) -> void:
 		position = p + perp * slot.lane
 		rotation = dir.angle()
 		_visual_offset = off
-		if _tag:
-			_tag.visible = car.is_player
 		return
 
 	# Pit stop: park beside the start line instead of freezing on the racing line.

@@ -204,6 +204,8 @@ func _build_start_overlay() -> void:
 	var overlay := CenterContainer.new()
 	overlay.name = "StartOverlay"
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Keep the panel below the grid camera's framing of the formation.
+	overlay.offset_top = 320.0
 	get_node("UI").add_child(overlay)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
@@ -399,6 +401,17 @@ func _update_camera(delta: float) -> void:
 		return
 	var target := _full_center
 	var zoom := _full_zoom
+
+	# Formation & start lights: frame the grid up close so every car is seen
+	# on its own box; the green flag eases the camera back out.
+	if not _car_nodes.is_empty() and _car_nodes[0].grid_hold and _renderer:
+		var mid_off: float = fposmod(-240.0, _renderer.baked_length())
+		target = _renderer.sample(mid_off)
+		zoom = 1.45
+		_camera.position = _camera.position.lerp(target, minf(delta * 4.0, 1.0))
+		var gz := _camera.zoom.x + (zoom - _camera.zoom.x) * minf(delta * 4.0, 1.0)
+		_camera.zoom = Vector2(gz, gz)
+		return
 	match camera_mode:
 		1:   # TV: frame the most interesting battle, sticky for a few seconds.
 			_cam_battle_timer -= delta

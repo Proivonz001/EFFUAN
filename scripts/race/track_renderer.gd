@@ -307,7 +307,7 @@ static func grid_slot_transform(grid_pos: int) -> Dictionary:
 	var row := i >> 1
 	return {
 		"offset": -46.0 - row * 42.0 - (16.0 if i % 2 == 1 else 0.0),
-		"lane": 9.0 if i % 2 == 0 else -9.0,
+		"lane": 10.5 if i % 2 == 0 else -10.5,
 	}
 
 

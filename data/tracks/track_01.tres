@@ -150,7 +150,7 @@ length_m = 360.0
 corner_class = 0
 drs_zone = false
 overtaking_difficulty = 1.3
-width_scale = 1.15
+width_scale = 1.25
 
 [resource]
 script = ExtResource("2")
