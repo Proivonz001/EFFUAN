@@ -7,6 +7,7 @@ const RACE_SCENE := "res://scenes/race/race.tscn"
 
 var _screen: Node
 var _ui_layer: CanvasLayer
+var _fade: ColorRect
 var _screenshot_timer := -1.0
 
 
@@ -15,6 +16,16 @@ func _ready() -> void:
 	# rect for their anchors (Main itself is a plain Node).
 	_ui_layer = CanvasLayer.new()
 	add_child(_ui_layer)
+	# Fade curtain for screen transitions.
+	var fade_layer := CanvasLayer.new()
+	fade_layer.layer = 90
+	add_child(fade_layer)
+	_fade = ColorRect.new()
+	_fade.color = Color(0.03, 0.035, 0.05)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fade.modulate = Color(1, 1, 1, 0.0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_layer.add_child(_fade)
 	var start := "menu"
 	for arg in OS.get_cmdline_user_args():
 		# Debug hooks for automated visual verification.
@@ -68,6 +79,12 @@ func goto_season_end() -> void:
 
 
 func _swap(node: Node) -> void:
+	# Quick fade through dark between screens (skipped for the very first one).
+	var animate: bool = _screen != null and _fade != null
+	if animate:
+		var tween_in := create_tween()
+		tween_in.tween_property(_fade, "modulate:a", 1.0, 0.14)
+		await tween_in.finished
 	if _screen:
 		_screen.queue_free()
 	_screen = node
@@ -75,6 +92,9 @@ func _swap(node: Node) -> void:
 		_ui_layer.add_child(node)
 	else:
 		add_child(node)
+	if animate:
+		var tween_out := create_tween()
+		tween_out.tween_property(_fade, "modulate:a", 0.0, 0.18)
 
 
 func _process(delta: float) -> void:

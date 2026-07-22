@@ -14,6 +14,8 @@ var car: CarData
 
 var _gauges: Control
 var _gaps: Label
+var _pos_label: Label
+var _pit_proj: Label
 var _mode_buttons: Array = []
 var _ovt_button: Button
 var _compound_buttons: Array = []
@@ -42,6 +44,9 @@ func _build() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
 	v.add_child(head)
+	_pos_label = UIKit.label("P–", 22, UIKit.TEXT)
+	_pos_label.custom_minimum_size = Vector2(44, 0)
+	head.add_child(_pos_label)
 	head.add_child(UIKit.team_bar(car.team.primary_color, 20))
 	var code := UIKit.label(car.short_code(), 20, UIKit.GOLD)
 	head.add_child(code)
@@ -89,6 +94,8 @@ func _build() -> void:
 		pit_row.add_child(b)
 		_compound_buttons.append({"b": b, "c": compound})
 	pit_row.add_child(UIKit.hspacer())
+	_pit_proj = UIKit.label("", 12, UIKit.TEXT_DIM)
+	pit_row.add_child(_pit_proj)
 	_box_button = UIKit.button("BOX", Vector2(86, 38), 14, func() -> void:
 		manager.cmd_toggle_pit(car, _pit_compound)
 		_refresh())
@@ -123,6 +130,14 @@ func _refresh() -> void:
 		UIKit.set_active(entry.b, entry.c == _pit_compound)
 	UIKit.set_active(_box_button, car.pit_requested)
 	_box_button.text = "BOX ✓" if car.pit_requested else "BOX"
+
+	# Live position + pit rejoin projection.
+	var pos_idx: int = manager.engine.order.find(car)
+	_pos_label.text = "P%d" % (pos_idx + 1) if pos_idx >= 0 else "P–"
+	if car.in_pit or car.dnf or car.finished:
+		_pit_proj.text = ""
+	else:
+		_pit_proj.text = "BOX now → ~P%d" % manager.pit_projection(car)
 
 	var gaps: Array = manager.gaps_around(car)
 	var ahead: String = "—" if gaps[0] < 0.0 or gaps[0] > 90.0 else "%.1fs" % gaps[0]

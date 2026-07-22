@@ -5,9 +5,11 @@ sim mapping, the renderer and the race furniture (grid, pit lane, camera) all
 work without per-track hacks.
 
 ## Canvas & framing
-- Anchor coordinates inside **x [240, 1780], y [90, 880]**. The FULL camera
-  auto-fits the bounding box, so use the space — small drawings = small tracks.
-- No two track sections closer than **90 px** to each other (edges + kerbs +
+- The FULL camera auto-fits the bounding box, so coordinates are free — but
+  keep the layout aspect near 16:9 and DRAW BIG (current tracks use roughly
+  x [230, 2230], y [110, 1100]; cars are fixed-size pixels, so a larger
+  drawing = a longer-feeling circuit).
+- No two track sections closer than **110 px** to each other (edges + kerbs +
   scenery need clearance; trees are auto-rejected within 60 px).
 
 ## Anchors & geometry
@@ -31,15 +33,18 @@ work without per-track hacks.
 
 ## Start/finish & grid
 - The s/f line (anchor 0) sits on the longest straight with at least
-  **230 px of straight BEHIND the line** (20 staggered grid boxes reach
-  ~-195 px) and **120 px ahead** (pit exit merge).
+  **310 px of straight BEHIND the line** (20 staggered grid boxes reach
+  ~-285 px) and **130 px ahead** (pit exit merge). RaceManager converts each
+  painted box to sim meters at setup, so the formation and the sim always
+  agree — never rely on visual-only placement.
 - The pit lane is auto-drawn on the **infield side** of the s/f straight from
-  offset -280 to +60: keep that side clear of other track sections.
+  offset -340 to +70: keep that side clear of other track sections.
 
 ## Width
-- Base ribbon 28 px. Use `TrackSegment.width_scale` 1.1-1.25 on the grid
-  straight and on heavy-braking hairpins (real circuits widen there);
-  never below 0.9 or above 1.3. The renderer blurs transitions automatically.
+- Base ribbon 34 px (two cars race side by side; wide zones fit three).
+  Use `TrackSegment.width_scale` 1.1-1.25 on the grid straight and on
+  heavy-braking hairpins (real circuits widen there); never below 0.9 or
+  above 1.3. The renderer blurs transitions automatically.
 
 ## Race furniture
 - 1-2 DRS zones on the longest straights, `overtaking_difficulty` 0.5-0.7

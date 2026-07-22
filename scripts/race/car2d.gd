@@ -5,8 +5,8 @@ extends Node2D
 ## offset. No signals, no sim writes.
 
 const SMOOTHING := 9.0               # 1/s — how fast the visual chases the sim position
-const LANE_BASE_PX := 4.0            # everyday side offset so cars don't stack
-const LANE_BATTLE_PX := 10.0         # widened while attacking/defending
+const LANE_BASE_PX := 5.0            # everyday side offset so cars don't stack
+const LANE_BATTLE_PX := 13.0         # widened while attacking/defending — two-wide on the 34px ribbon
 const TRAIL_LENGTH := 12
 const DRS_COLOR := Color(0.2, 1.0, 0.5)
 const ERS_COLOR := Color(1.0, 0.35, 0.9)

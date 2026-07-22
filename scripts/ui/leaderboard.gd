@@ -170,6 +170,13 @@ func _on_positions(order: Array) -> void:
 		widgets.tyre.text = car.compound.id.substr(0, 1).to_upper()
 		widgets.tyre.add_theme_color_override("font_color", car.compound.display_color)
 		widgets.wear.text = "%d%%" % int(car.tyre_wear * 100.0)
+		# Stint state at a glance: green fresh, amber going off, red at the cliff.
+		var wear_col := UIKit.GOOD
+		if car.tyre_wear > 0.62:
+			wear_col = UIKit.BAD
+		elif car.tyre_wear > 0.45:
+			wear_col = UIKit.WARN
+		widgets.wear.add_theme_color_override("font_color", wear_col)
 		var flashing: bool = _flash.has(car.index)
 		if car.dnf:
 			widgets.gap.text = "OUT"

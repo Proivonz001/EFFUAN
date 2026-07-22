@@ -99,6 +99,7 @@ func _setup_race() -> void:
 	var seed_value: int = GameState.race_seed() if GameState.career_active else 0
 	engine.setup(_track_data, entries, series.race_laps, compounds,
 			GameData.player_team_id, seed_value, weather, grid_ready)
+	_align_grid_to_boxes()
 
 	# Car visuals.
 	var car_layer := Node2D.new()
@@ -279,6 +280,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			set_time_scale(2)
 		KEY_C:
 			cycle_camera()
+		KEY_H:
+			var legend := get_node_or_null("UI/Legend")
+			if legend:
+				legend.toggle()
 
 
 func _process(delta: float) -> void:
@@ -493,6 +498,44 @@ func _maybe_replay(attacker: CarData, defender: CarData) -> void:
 		"code_a": attacker.short_code(), "code_b": defender.short_code(),
 		"col_a": attacker.team.primary_color, "col_b": defender.team.primary_color,
 	})
+
+
+## Convert each painted grid box to sim meters and place the cars there, so the
+## visual formation and the sim agree exactly — no snap at lights-out.
+func _align_grid_to_boxes() -> void:
+	if _renderer == null:
+		return
+	var n := _track_data.segment_count()
+	if _renderer._seg_offsets.size() != n + 1:
+		_renderer._refresh()
+	if _renderer._seg_offsets.size() != n + 1:
+		push_warning("grid alignment skipped: renderer offsets not ready")
+		return
+	var final_seg := _track_data.get_segment(n - 1)
+	var span_px: float = _renderer._seg_offsets[n] - _renderer._seg_offsets[n - 1]
+	if span_px <= 0.0:
+		return
+	for car: CarData in engine.cars:
+		var slot := TrackRenderer.grid_slot_transform(car.grid_pos)
+		var meters_behind: float = -slot.offset / span_px * final_seg.length_m
+		engine.set_race_distance(car, -meters_behind)
+
+
+## Where would this car rejoin if it boxed right now? Counts the cars that
+## would still be ahead after losing the pit-lane time at race speed.
+func pit_projection(car: CarData) -> int:
+	var track := engine.track
+	var leader: CarData = engine.order[0]
+	var ref_lap: float = leader.last_lap_time if leader.last_lap_time > 0.0 else track.base_lap_time
+	var avg_speed: float = track.total_length_m() / ref_lap
+	var d_after: float = car.race_distance_m - track.pit_lane_time_loss * avg_speed
+	var pos := 1
+	for other: CarData in engine.order:
+		if other == car or other.dnf:
+			continue
+		if other.race_distance_m > d_after:
+			pos += 1
+	return pos
 
 
 ## Live gaps for the selected car's pit-wall readout: [ahead_s, behind_s] (-1 = none).

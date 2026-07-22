@@ -12,9 +12,9 @@ const EDGE := Color(0.85, 0.86, 0.88, 0.9)
 const DRS_COLOR := Color(0.15, 0.9, 0.45, 0.85)
 const KERB_RED := Color(0.82, 0.18, 0.16)
 const KERB_WHITE := Color(0.88, 0.88, 0.9)
-const TRACK_WIDTH := 28.0
+const TRACK_WIDTH := 34.0
 const KERB_DASH_PX := 14.0
-const PIT_LANE_DEPTH := 30.0
+const PIT_LANE_DEPTH := 36.0
 
 @export var path: TrackPath
 @export var track_data: TrackData
@@ -178,18 +178,18 @@ func _draw() -> void:
 func _draw_pit_lane() -> void:
 	var lane_pts := PackedVector2Array()
 	var step := 14.0
-	var o := -280.0
-	while o <= 60.0:
+	var o := -340.0
+	while o <= 70.0:
 		var off := fposmod(o, _baked_len)
 		var p := sample(off)
 		var dir := direction_at(off)
 		var perp := Vector2(-dir.y, dir.x)
 		# Taper in/out at the ends so the lane merges into the track edge.
 		var depth := PIT_LANE_DEPTH
-		if o < -230.0:
-			depth = remap(o, -280.0, -230.0, 4.0, PIT_LANE_DEPTH)
-		elif o > 20.0:
-			depth = remap(o, 20.0, 60.0, PIT_LANE_DEPTH, 4.0)
+		if o < -285.0:
+			depth = remap(o, -340.0, -285.0, 4.0, PIT_LANE_DEPTH)
+		elif o > 25.0:
+			depth = remap(o, 25.0, 70.0, PIT_LANE_DEPTH, 4.0)
 		lane_pts.append(p - perp * depth)
 		o += step
 	draw_polyline(lane_pts, Color(0.75, 0.76, 0.8, 0.5), 15.0)
@@ -305,8 +305,8 @@ static func grid_slot_transform(grid_pos: int) -> Dictionary:
 	var i := grid_pos - 1
 	var row := i >> 1
 	return {
-		"offset": -34.0 - row * 17.0 - (8.0 if i % 2 == 1 else 0.0),
-		"lane": 8.0 if i % 2 == 0 else -8.0,
+		"offset": -40.0 - row * 26.0 - (11.0 if i % 2 == 1 else 0.0),
+		"lane": 9.0 if i % 2 == 0 else -9.0,
 	}
 
 
@@ -318,10 +318,10 @@ func _draw_grid_slots() -> void:
 		var dir := direction_at(off)
 		var perp := Vector2(-dir.y, dir.x)
 		var base: Vector2 = p + perp * slot.lane
-		var col := Color(1, 1, 1, 0.30)
-		draw_line(base - perp * 5.0 + dir * 7.0, base + perp * 5.0 + dir * 7.0, col, 2.0)
-		draw_line(base - perp * 5.0 + dir * 7.0, base - perp * 5.0 - dir * 5.0, col, 2.0)
-		draw_line(base + perp * 5.0 + dir * 7.0, base + perp * 5.0 - dir * 5.0, col, 2.0)
+		var col := Color(1, 1, 1, 0.32)
+		draw_line(base - perp * 6.0 + dir * 9.0, base + perp * 6.0 + dir * 9.0, col, 2.0)
+		draw_line(base - perp * 6.0 + dir * 9.0, base - perp * 6.0 - dir * 7.0, col, 2.0)
+		draw_line(base + perp * 6.0 + dir * 9.0, base + perp * 6.0 - dir * 7.0, col, 2.0)
 
 
 ## DRS zones as a thin stripe along the edge of the ribbon, off the racing line.
