@@ -7,6 +7,27 @@ in races that last 5-8 real minutes.
 
 ![Godot 4.7](https://img.shields.io/badge/Godot-4.7-blue)
 
+## Milestone 4 — Race Presentation & Feel (done)
+
+- **Wheel-to-wheel duels**: overtakes are no longer instant swaps — the
+  attacker pulls alongside (opposite lanes, glued by the engine so the pair
+  can't see-saw) and the verdict lands at the next braking zone. Radio calls
+  both phases. 40px ribbon, two-wide everywhere, three in widened zones.
+- **Real formation grid**: 20 painted boxes at F1-realistic pitch on extended
+  grid straights (all 4 tracks), sim positions derived from the boxes (no
+  snap at lights-out), dedicated zoomed grid camera through the start lights.
+- **Broadcast HUD**: full-width bottom telemetry bar (radio + two driver
+  cards with vector gauges + session strip), timing tower + weather column on
+  the left, camera auto-fits the circuit into the free region — UI never
+  covers the track. FULL / TV (auto-directs battles) / CAR camera modes.
+- **Pre-race strategy**: per-driver starting compound + fuel mode (rich =
+  faster but heavier start) locked at the setup screen; OVERTAKE is an earned
+  one-lap boost (within 1s at the line on the previous lap).
+- Anchor-aligned track mapping, variable track width, kerbs/corner numbers/
+  pit lane/grid boxes, scenery, fastest-lap banner + sector dots, overtake
+  replay window, in-race legend (H). See docs/track_standards.md before
+  authoring new circuits.
+
 ## Milestone 3 — Quality Pass (done)
 
 - **Visual identity**: global custom Theme (regenerate with
