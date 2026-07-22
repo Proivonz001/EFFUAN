@@ -69,6 +69,7 @@ func _on_dnf(car: CarData) -> void:
 func _on_sc(phase: String) -> void:
 	match phase:
 		"deployed":
+			Sfx.sc_alert()
 			_say("SAFETY CAR deployed — field bunching up. Pit window is cheap.", COL_SC)
 		"ending":
 			_say("Safety Car in this lap — prepare for the restart.", COL_SC)
@@ -163,6 +164,7 @@ func _try(key: String, cooldown_sim_s: float, text: String, color: Color) -> voi
 
 
 func _say(text: String, color: Color) -> void:
+	Sfx.radio()
 	var label := Label.new()
 	label.text = "RADIO ›  " + text
 	label.add_theme_font_size_override("font_size", 15)

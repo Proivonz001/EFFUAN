@@ -99,6 +99,9 @@ var _sc_laps_remaining := 0
 var _sc_leader_lap_seen := -1
 
 var _rng := RandomNumberGenerator.new()
+## Time already consumed inside the current tick when a segment completes —
+## gives lap/finish times millisecond precision instead of tick quantization.
+var _tick_time_offset := 0.0
 var _allowed_compounds: Array = []   # Array[TyreCompound]
 var _track_len: float = 0.0
 var _seg_base_times: PackedFloat32Array = []
@@ -237,6 +240,7 @@ func _advance_car(car: CarData, dt: float) -> void:
 			remaining = 0.0
 		else:
 			remaining -= time_left
+			_tick_time_offset = dt - remaining
 			_on_segment_complete(car)
 			if car.finished or car.in_pit:
 				break
@@ -274,18 +278,19 @@ func _on_line_crossed(car: CarData) -> void:
 		return
 	car.max_lap_seen = car.laps_crossed
 
+	var now := sim_time + _tick_time_offset
 	if car.laps_crossed > 0:
-		var lap_time := sim_time - car.current_lap_start_time
+		var lap_time := now - car.current_lap_start_time
 		car.last_lap_time = lap_time
 		if car.best_lap_time == 0.0 or lap_time < car.best_lap_time:
 			car.best_lap_time = lap_time
 		events.append({"type": "lap", "car": car, "lap": car.laps_crossed, "time": lap_time})
-	car.current_lap_start_time = sim_time
+	car.current_lap_start_time = now
 	car.lap = mini(car.laps_crossed + 1, race_laps)
 
 	if car.laps_crossed >= race_laps:
 		car.finished = true
-		car.finish_time = sim_time
+		car.finish_time = now
 		events.append({"type": "finish", "car": car})
 		return
 
@@ -347,7 +352,8 @@ func _compute_segment_time(car: CarData) -> float:
 		t *= 1.0 + DIRTY_AIR_CORNER_FACTOR * (1.0 - car.gap_ahead_s / SLIPSTREAM_GAP_S)
 
 	# DRS: designated straights, within 1s at the detection point.
-	if seg.drs_zone and not is_corner and car.gap_ahead_s < SLIPSTREAM_GAP_S:
+	car.drs_open = seg.drs_zone and not is_corner and car.gap_ahead_s < SLIPSTREAM_GAP_S
+	if car.drs_open:
 		t *= DRS_TIME_FACTOR
 
 	# Fuel weight + mixture.

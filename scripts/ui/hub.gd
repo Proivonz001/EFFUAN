@@ -74,9 +74,7 @@ func _ready() -> void:
 	st_title.add_theme_font_size_override("font_size", 18)
 	st_header.add_child(st_title)
 	st_header.add_child(_hspacer())
-	_toggle_series_btn = Button.new()
-	_toggle_series_btn.focus_mode = Control.FOCUS_NONE
-	_toggle_series_btn.pressed.connect(func() -> void:
+	_toggle_series_btn = UIKit.button("", Vector2(220, 36), 13, func() -> void:
 		_showing_other_series = not _showing_other_series
 		_rebuild_standings())
 	st_header.add_child(_toggle_series_btn)
@@ -101,16 +99,13 @@ func _ready() -> void:
 	var footer := HBoxContainer.new()
 	root.add_child(footer)
 	footer.add_child(_hspacer())
-	var go := Button.new()
-	go.custom_minimum_size = Vector2(320, 56)
-	go.add_theme_font_size_override("font_size", 20)
-	go.focus_mode = Control.FOCUS_NONE
+	var go: Button
 	if GameState.season_over:
-		go.text = "SEASON REVIEW"
-		go.pressed.connect(func() -> void: _main().goto_season_end())
+		go = UIKit.button("SEASON REVIEW", Vector2(320, 56), 20,
+				func() -> void: _main().goto_season_end())
 	else:
-		go.text = "RACE WEEKEND  >"
-		go.pressed.connect(func() -> void: _main().goto_setup())
+		go = UIKit.button("RACE WEEKEND  >", Vector2(320, 56), 20,
+				func() -> void: _main().goto_setup())
 	footer.add_child(go)
 
 
@@ -252,14 +247,9 @@ func _build_rnd_panel(parent: Node) -> void:
 	pillar_row.add_theme_constant_override("separation", 6)
 	v.add_child(pillar_row)
 	for pillar in PILLARS:
-		var b := Button.new()
-		if pillar == "reliability":
-			b.text = "REL FIX"
-		else:
-			b.text = "%s  %+.1f" % [pillar.to_upper(), bonuses.get(pillar, 0.0)]
-		b.custom_minimum_size = Vector2(120, 46)
-		b.focus_mode = Control.FOCUS_NONE
-		b.pressed.connect(func() -> void:
+		var text: String = "REL FIX" if pillar == "reliability" \
+				else "%s  %+.1f" % [pillar.to_upper(), bonuses.get(pillar, 0.0)]
+		var b := UIKit.button(text, Vector2(120, 46), 14, func() -> void:
 			_selected_pillar = pillar
 			_sync_rnd())
 		pillar_row.add_child(b)
@@ -269,21 +259,13 @@ func _build_rnd_panel(parent: Node) -> void:
 	variant_row.add_theme_constant_override("separation", 6)
 	v.add_child(variant_row)
 	for i in GameState.UPGRADE_VARIANTS.size():
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(155, 52)
-		b.focus_mode = Control.FOCUS_NONE
 		var idx := i
-		b.pressed.connect(func() -> void:
+		var b := UIKit.button("", Vector2(155, 58), 12, func() -> void:
 			_selected_variant = idx
 			_sync_rnd())
 		variant_row.add_child(b)
 		_variant_buttons.append(b)
-	_buy_button = Button.new()
-	_buy_button.text = "BUY"
-	_buy_button.custom_minimum_size = Vector2(90, 52)
-	_buy_button.add_theme_font_size_override("font_size", 17)
-	_buy_button.focus_mode = Control.FOCUS_NONE
-	_buy_button.pressed.connect(_on_buy)
+	_buy_button = UIKit.button("BUY", Vector2(90, 58), 17, _on_buy)
 	variant_row.add_child(_buy_button)
 
 	_rnd_msg = Label.new()

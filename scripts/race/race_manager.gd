@@ -27,6 +27,7 @@ var _renderer: TrackRenderer
 var _car_nodes: Array = []
 var _last_leader_lap := 0
 var _positions_timer := 0.0
+var _rain: CPUParticles2D
 
 
 # Children (UI panels) read the engine in their _ready, which runs BEFORE the
@@ -65,11 +66,14 @@ func _setup_race() -> void:
 		push_error("RaceManager: missing series or track data")
 		return
 
+	_build_backdrop()
+
 	# Track scene.
 	var track_scene: Node2D = load(_track_data.scene_path).instantiate()
 	add_child(track_scene)
 	move_child(track_scene, 0)
 	_renderer = track_scene.get_node("TrackRenderer")
+	_build_rain()
 
 	# Engine. Rain compounds are always in the pool alongside the series slicks.
 	var compounds: Array = []
@@ -102,6 +106,70 @@ func _setup_race() -> void:
 	positions_changed.emit(engine.get_classification())
 
 
+## Soft radial vignette + dot grid behind everything — kills the flat black.
+func _build_backdrop() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = -1
+	add_child(layer)
+	var rect := ColorRect.new()
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+void fragment() {
+	vec2 uv = UV - 0.5;
+	float d = length(uv * vec2(1.6, 1.0));
+	vec3 base = vec3(0.075, 0.082, 0.104);
+	vec3 edge = vec3(0.034, 0.038, 0.052);
+	vec3 col = mix(base, edge, smoothstep(0.2, 0.85, d));
+	vec2 g = fract(FRAGCOORD.xy / 48.0) - 0.5;
+	col += smoothstep(0.07, 0.02, length(g)) * 0.014;
+	COLOR = vec4(col, 1.0);
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	rect.material = mat
+	layer.add_child(rect)
+
+
+func _build_rain() -> void:
+	_rain = CPUParticles2D.new()
+	_rain.emitting = false
+	_rain.amount = 260
+	_rain.lifetime = 0.9
+	_rain.position = Vector2(960, 380)
+	_rain.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_rain.emission_rect_extents = Vector2(1100, 620)
+	_rain.direction = Vector2(0.12, 1.0)
+	_rain.spread = 4.0
+	_rain.initial_velocity_min = 700.0
+	_rain.initial_velocity_max = 950.0
+	_rain.gravity = Vector2(0, 300)
+	var streak := GradientTexture2D.new()
+	streak.width = 2
+	streak.height = 14
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 0.0))
+	grad.set_color(1, Color(0.7, 0.8, 1.0, 0.6))
+	streak.gradient = grad
+	streak.fill_from = Vector2(0.5, 0.0)
+	streak.fill_to = Vector2(0.5, 1.0)
+	_rain.texture = streak
+	_rain.z_index = 20
+	add_child(_rain)
+
+
+func _sync_weather_visuals() -> void:
+	var w: WeatherSystem = engine.weather
+	if _renderer:
+		_renderer.wetness = w.wetness
+	if _rain:
+		_rain.emitting = w.intensity > 0.05
+		_rain.modulate = Color(1, 1, 1, clampf(0.25 + w.intensity, 0.0, 1.0))
+	Sfx.set_ambient_pitch(0.8 + 0.15 * time_scale_index)
+
+
 func _build_start_overlay() -> void:
 	var overlay := CenterContainer.new()
 	overlay.name = "StartOverlay"
@@ -127,9 +195,42 @@ func _build_start_overlay() -> void:
 	start.add_theme_font_size_override("font_size", 22)
 	start.focus_mode = Control.FOCUS_NONE
 	start.pressed.connect(func() -> void:
-		paused = false
-		overlay.queue_free())
+		start.visible = false
+		_run_start_lights(overlay, vbox))
 	vbox.add_child(start)
+
+
+## Five red lights... and it's lights out.
+func _run_start_lights(overlay: Node, vbox: VBoxContainer) -> void:
+	var lights_row := HBoxContainer.new()
+	lights_row.add_theme_constant_override("separation", 14)
+	lights_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(lights_row)
+	var lights: Array = []
+	for i in 5:
+		var light := Panel.new()
+		light.custom_minimum_size = Vector2(46, 46)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.16, 0.05, 0.05)
+		sb.set_corner_radius_all(23)
+		sb.set_border_width_all(2)
+		sb.border_color = Color(0.3, 0.3, 0.34)
+		light.add_theme_stylebox_override("panel", sb)
+		lights_row.add_child(light)
+		lights.append(sb)
+	for sb in lights:
+		await get_tree().create_timer(0.55).timeout
+		if not is_instance_valid(overlay):
+			return   # player skipped with SPACE
+		sb.bg_color = Color(0.95, 0.12, 0.10)
+		Sfx.light_on()
+	await get_tree().create_timer(randf_range(0.5, 1.3)).timeout
+	if not is_instance_valid(overlay):
+		return
+	Sfx.lights_out()
+	Sfx.start_ambient()
+	paused = false
+	overlay.queue_free()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -161,6 +262,7 @@ func _physics_process(delta: float) -> void:
 	_positions_timer += delta
 	if _positions_timer >= 0.25:
 		_positions_timer = 0.0
+		_sync_weather_visuals()
 		positions_changed.emit(engine.get_classification())
 		var leader: CarData = engine.get_classification()[0]
 		if leader.lap != _last_leader_lap:
@@ -185,8 +287,13 @@ func _drain_events() -> void:
 				sc_changed.emit(ev.phase)
 			"race_finished":
 				race_running = false
+				Sfx.stop_ambient()
 				race_finished.emit(engine.get_classification())
 	engine.events.clear()
+
+
+func _exit_tree() -> void:
+	Sfx.stop_ambient()
 
 
 # ------------------------------------------------------------ UI commands ---

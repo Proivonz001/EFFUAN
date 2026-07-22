@@ -54,27 +54,14 @@ func _on_race_finished(classification: Array) -> void:
 	vbox.add_child(HSeparator.new())
 	var main := get_node("/root/Main")
 	if GameState.career_active:
-		var cont := Button.new()
-		cont.text = "CONTINUE"
-		cont.custom_minimum_size = Vector2(220, 48)
-		cont.focus_mode = Control.FOCUS_NONE
-		cont.pressed.connect(func() -> void:
+		vbox.add_child(UIKit.button("CONTINUE", Vector2(220, 48), 16, func() -> void:
 			GameState.apply_player_race(classification)
 			if GameState.season_over:
 				main.goto_season_end()
 			else:
-				main.goto_hub())
-		vbox.add_child(cont)
+				main.goto_hub()))
 	else:
-		var again := Button.new()
-		again.text = "RACE AGAIN"
-		again.custom_minimum_size = Vector2(200, 48)
-		again.focus_mode = Control.FOCUS_NONE
-		again.pressed.connect(func() -> void: main.goto_race())
-		vbox.add_child(again)
-		var menu := Button.new()
-		menu.text = "MENU"
-		menu.custom_minimum_size = Vector2(200, 44)
-		menu.focus_mode = Control.FOCUS_NONE
-		menu.pressed.connect(func() -> void: main.goto_menu())
-		vbox.add_child(menu)
+		vbox.add_child(UIKit.button("RACE AGAIN", Vector2(200, 48), 16,
+				func() -> void: main.goto_race()))
+		vbox.add_child(UIKit.button("MENU", Vector2(200, 44), 15,
+				func() -> void: main.goto_menu()))

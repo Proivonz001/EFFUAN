@@ -57,6 +57,7 @@ var dnf: bool = false                 # mechanical retirement
 var gap_ahead_s: float = 99.0         # live gap to the car directly ahead on track
 var attack_cooldown: int = 0          # segments until the next overtake attempt is allowed
 var in_battle: bool = false           # true while actively attacking/defending (visual lane offset)
+var drs_open: bool = false            # DRS active in the current segment (visual indicator)
 
 
 func display_name() -> String:

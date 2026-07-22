@@ -14,14 +14,20 @@ func _ready() -> void:
 
 	var title := Label.new()
 	title.text = "EFFUAN"
-	title.add_theme_font_size_override("font_size", 72)
+	title.add_theme_font_override("font", load("res://assets/fonts/TitilliumWeb-Bold.ttf"))
+	title.add_theme_font_size_override("font_size", 84)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
+
+	var accent := ColorRect.new()
+	accent.color = UIKit.ACCENT
+	accent.custom_minimum_size = Vector2(340, 4)
+	vbox.add_child(accent)
 
 	var subtitle := Label.new()
 	subtitle.text = "minimalist racing management"
 	subtitle.add_theme_font_size_override("font_size", 18)
-	subtitle.add_theme_color_override("font_color", Color(0.6, 0.63, 0.7))
+	subtitle.add_theme_color_override("font_color", UIKit.TEXT_DIM)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(subtitle)
 
@@ -43,12 +49,7 @@ func _ready() -> void:
 
 
 func _add_button(parent: Node, text: String, handler: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(340, 56)
-	b.add_theme_font_size_override("font_size", 20)
-	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(handler)
+	var b := UIKit.button(text, Vector2(340, 56), 20, handler)
 	parent.add_child(b)
 	return b
 

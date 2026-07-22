@@ -4,11 +4,18 @@ extends Node2D
 ## CarData (written only by the engine) and eases toward the target curve
 ## offset. No signals, no sim writes.
 
-static var BODY_POINTS := PackedVector2Array([14, 0, 7, -5, -9, -5, -13, -3, -13, 3, -9, 5, 7, 5])
+# Top-down open-wheel silhouette (pointing +x): nose, cockpit bulge, sidepods.
+static var BODY_POINTS := PackedVector2Array([
+	16, 0, 12, -2, 6, -3, 2, -6, -6, -6, -10, -4, -12, -4, -12, 4, -10, 4, -6, 6, 2, 6, 6, 3, 12, 2])
+static var FRONT_WING := PackedVector2Array([15, -8, 17, -8, 17, 8, 15, 8])
+static var REAR_WING := PackedVector2Array([-15, -7, -12, -7, -12, 7, -15, 7])
+
 const SMOOTHING := 9.0               # 1/s — how fast the visual chases the sim position
 const LANE_BASE_PX := 5.0            # everyday side offset so cars don't stack
 const LANE_BATTLE_PX := 13.0         # widened while attacking/defending
 const TRAIL_LENGTH := 12
+const DRS_COLOR := Color(0.2, 1.0, 0.5)
+const ERS_COLOR := Color(1.0, 0.35, 0.9)
 
 var car: CarData
 var renderer: TrackRenderer
@@ -17,6 +24,10 @@ var _visual_offset := 0.0
 var _lane_current := 0.0
 var _lane_side := 1.0
 var _body: Polygon2D
+var _front_wing: Polygon2D
+var _rear_wing: Polygon2D
+var _cockpit: Polygon2D
+var _ers_dot: Polygon2D
 var _shadow: Polygon2D
 var _glow: Node2D
 var _trail: Line2D
@@ -60,6 +71,31 @@ func setup(p_car: CarData, p_renderer: TrackRenderer) -> void:
 	_body.polygon = BODY_POINTS
 	_body.color = car.team.primary_color
 	add_child(_body)
+
+	_front_wing = Polygon2D.new()
+	_front_wing.polygon = FRONT_WING
+	_front_wing.color = car.team.primary_color.lightened(0.25)
+	add_child(_front_wing)
+
+	_rear_wing = Polygon2D.new()
+	_rear_wing.polygon = REAR_WING
+	_rear_wing.color = car.team.primary_color.darkened(0.25)
+	add_child(_rear_wing)
+
+	_cockpit = Polygon2D.new()
+	_cockpit.polygon = PackedVector2Array([3, -2, 3, 2, -4, 2, -4, -2])
+	_cockpit.color = Color(0.06, 0.06, 0.08)
+	add_child(_cockpit)
+
+	_ers_dot = Polygon2D.new()
+	var dot := PackedVector2Array()
+	for i in 9:
+		var a := TAU * i / 8.0
+		dot.append(Vector2(cos(a), sin(a)) * 3.0 + Vector2(-8, 0))
+	_ers_dot.polygon = dot
+	_ers_dot.color = ERS_COLOR
+	_ers_dot.visible = false
+	add_child(_ers_dot)
 
 	_visual_offset = _target_offset()
 	_apply_transform(0.0)
@@ -117,7 +153,20 @@ func _apply_transform(delta: float) -> void:
 	elif car.dnf:
 		dim = 0.15
 	_body.color = Color(car.team.primary_color, dim)
+	_front_wing.color = Color(car.team.primary_color.lightened(0.25), dim)
+	_cockpit.color = Color(0.06, 0.06, 0.08, dim)
 	_shadow.color = Color(0, 0, 0, 0.35 * dim)
+
+	# DRS flap glows green when open; ERS dot pulses while deploying.
+	if car.drs_open and not car.in_pit and not car.dnf:
+		_rear_wing.color = DRS_COLOR
+	else:
+		_rear_wing.color = Color(car.team.primary_color.darkened(0.25), dim)
+	var deploying: bool = (car.ers_mode == CarData.ErsMode.DEPLOY
+			or car.ers_mode == CarData.ErsMode.OVERTAKE) and car.ers_charge > 0.0
+	_ers_dot.visible = deploying and not car.in_pit and not car.dnf
+	if _ers_dot.visible:
+		_ers_dot.color = Color(ERS_COLOR, 0.55 + 0.45 * sin(Time.get_ticks_msec() * 0.02))
 
 	# Trail (world-space points, newest first).
 	if _trail:

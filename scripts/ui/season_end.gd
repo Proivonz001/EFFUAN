@@ -59,19 +59,13 @@ func _ready() -> void:
 	buttons.add_theme_constant_override("separation", 10)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(buttons)
-	var next := Button.new()
-	next.text = "START SEASON %d" % (GameState.season + 1)
-	next.custom_minimum_size = Vector2(240, 52)
-	next.focus_mode = Control.FOCUS_NONE
-	next.pressed.connect(func() -> void:
-		GameState.start_next_season()
-		_main().goto_hub())
+	var next := UIKit.button("START SEASON %d" % (GameState.season + 1), Vector2(240, 52), 15,
+			func() -> void:
+				GameState.start_next_season()
+				_main().goto_hub())
 	buttons.add_child(next)
-	var menu := Button.new()
-	menu.text = "MAIN MENU"
-	menu.custom_minimum_size = Vector2(160, 52)
-	menu.focus_mode = Control.FOCUS_NONE
-	menu.pressed.connect(func() -> void: _main().goto_menu())
+	var menu := UIKit.button("MAIN MENU", Vector2(160, 52), 15,
+			func() -> void: _main().goto_menu())
 	buttons.add_child(menu)
 
 

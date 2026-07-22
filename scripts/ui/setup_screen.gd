@@ -113,26 +113,14 @@ func _ready() -> void:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	left.add_child(buttons)
-	var back := Button.new()
-	back.text = "< BACK"
-	back.custom_minimum_size = Vector2(120, 52)
-	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(func() -> void: _main().goto_hub())
+	var back := UIKit.button("< BACK", Vector2(120, 52), 14,
+			func() -> void: _main().goto_hub())
 	buttons.add_child(back)
-	_quali_btn = Button.new()
-	_quali_btn.text = "QUALIFY"
-	_quali_btn.custom_minimum_size = Vector2(220, 52)
-	_quali_btn.add_theme_font_size_override("font_size", 18)
-	_quali_btn.focus_mode = Control.FOCUS_NONE
-	_quali_btn.pressed.connect(_on_qualify)
+	_quali_btn = UIKit.button("QUALIFY", Vector2(220, 52), 18, _on_qualify)
 	buttons.add_child(_quali_btn)
-	_start_btn = Button.new()
-	_start_btn.text = "START RACE  >"
-	_start_btn.custom_minimum_size = Vector2(220, 52)
-	_start_btn.add_theme_font_size_override("font_size", 18)
-	_start_btn.focus_mode = Control.FOCUS_NONE
+	_start_btn = UIKit.button("START RACE  >", Vector2(220, 52), 18,
+			func() -> void: _main().goto_race())
 	_start_btn.visible = false
-	_start_btn.pressed.connect(func() -> void: _main().goto_race())
 	buttons.add_child(_start_btn)
 
 	# ---- right column: quali classification ----

@@ -10,8 +10,10 @@ var manager: RaceManager
 
 var _lap_label: Label
 var _title_label: Label
-var _rows: Array = []            # each: {root, pos, bar, code, gap, tyre, wear}
+var _rows: Array = []            # each: {root, pos, bar, code, gap, tyre, wear, delta}
 var _flash: Dictionary = {}      # car index -> seconds remaining
+var _last_pos: Dictionary = {}   # car index -> last shown position
+var _deltas: Dictionary = {}     # car index -> {d: int, t: float}
 
 
 func _ready() -> void:
@@ -97,8 +99,13 @@ func _build() -> void:
 		wear.add_theme_color_override("font_color", Color(0.6, 0.63, 0.7))
 		row.add_child(wear)
 
+		var delta := Label.new()
+		delta.custom_minimum_size = Vector2(28, 0)
+		delta.add_theme_font_size_override("font_size", 13)
+		row.add_child(delta)
+
 		vbox.add_child(row)
-		_rows.append({"root": row, "pos": pos, "bar": bar, "code": code, "gap": gap, "tyre": tyre, "wear": wear})
+		_rows.append({"root": row, "pos": pos, "bar": bar, "code": code, "gap": gap, "tyre": tyre, "wear": wear, "delta": delta})
 
 
 func _process(delta: float) -> void:
@@ -106,6 +113,10 @@ func _process(delta: float) -> void:
 		_flash[key] -= delta
 		if _flash[key] <= 0.0:
 			_flash.erase(key)
+	for key in _deltas.keys():
+		_deltas[key].t -= delta
+		if _deltas[key].t <= 0.0:
+			_deltas.erase(key)
 
 
 func _on_leader_lap(lap: int, total: int) -> void:
@@ -150,6 +161,19 @@ func _on_positions(order: Array) -> void:
 			widgets.root.modulate = Color(1, 1, 1, 0.35)
 		else:
 			widgets.root.modulate = Color(0.4, 1.0, 0.5) if flashing else Color.WHITE
+
+		# Position-change marker, shown for a few seconds.
+		var pos_now := i + 1
+		if _last_pos.has(car.index) and _last_pos[car.index] != pos_now and not car.dnf:
+			_deltas[car.index] = {"d": _last_pos[car.index] - pos_now, "t": 4.0}
+		_last_pos[car.index] = pos_now
+		if _deltas.has(car.index):
+			var d: int = _deltas[car.index].d
+			widgets.delta.text = ("+%d" % d) if d > 0 else str(d)
+			widgets.delta.add_theme_color_override("font_color",
+					UIKit.GOOD if d > 0 else UIKit.BAD)
+		else:
+			widgets.delta.text = ""
 
 
 func _gap_text(car: CarData, leader: CarData, pos_index: int) -> String:

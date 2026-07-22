@@ -185,16 +185,11 @@ func _refresh() -> void:
 
 
 func _mk_button(text: String, min_width: float) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(min_width, 44)
-	b.add_theme_font_size_override("font_size", 14)
-	b.focus_mode = Control.FOCUS_NONE
-	return b
+	return UIKit.button(text, Vector2(min_width, 44), 14)
 
 
 func _set_active(b: Button, active: bool) -> void:
-	b.modulate = Color(0.55, 1.0, 0.65) if active else Color.WHITE
+	UIKit.set_active(b, active)
 
 
 func _spacer() -> Control:

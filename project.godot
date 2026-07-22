@@ -19,6 +19,11 @@ config/features=PackedStringArray("4.7")
 
 GameData="*res://autoload/game_data.gd"
 GameState="*res://autoload/game_state.gd"
+Sfx="*res://autoload/sfx.gd"
+
+[gui]
+
+theme/custom="res://theme/effuan_theme.tres"
 
 [display]
 

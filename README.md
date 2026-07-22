@@ -7,6 +7,22 @@ in races that last 5-8 real minutes.
 
 ![Godot 4.7](https://img.shields.io/badge/Godot-4.7-blue)
 
+## Milestone 3 — Quality Pass (done)
+
+- **Visual identity**: global custom Theme (regenerate with
+  `tests/gen_theme.gd`), [Titillium Web](https://fonts.google.com/specimen/Titillium+Web)
+  typography (SIL OFL, bundled in `assets/fonts/`), shared `UIKit` palette
+  and widget factories used by every screen.
+- **Race view**: red/white kerbs on every corner, checkered start line, DRS
+  zone labels, radial-vignette backdrop, rain particles + asphalt that
+  darkens with wetness, F1-silhouette cars with DRS-open flap glow and ERS
+  deploy indicator, start-light sequence, position-change markers in the
+  timing tower.
+- **Timing precision**: sub-tick interpolation — lap and finish times are
+  millisecond-accurate instead of quantized to the sim tick.
+- **Audio**: fully procedural (zero asset files) — UI clicks, radio beeps,
+  SC alert, start lights, ambient engine bed pitched by time scale.
+
 ## Milestone 2 — Vertical Slice (done)
 
 The full concept loop is playable: **menu → season hub → setup + qualifying →
