@@ -36,11 +36,11 @@ const DUEL_ALONGSIDE_M := 2.0         # sim gap while wheel-to-wheel (noses over
 static func _resolve_pair(engine: RaceEngine, leader: CarData, follower: CarData) -> void:
 	var min_gap_m: float = RaceEngine.MIN_GAP_S * maxf(leader.current_speed, 1.0)
 
-	# An active duel pins the pair side by side until the braking zone decides it.
+	# An active duel: the pair is already pinned by the engine (fixed roles);
+	# nothing to do here but keep the battle flag alive.
 	if follower.duel_with == leader.index and leader.duel_with == follower.index:
 		follower.in_battle = true
 		leader.in_battle = true
-		engine.set_race_distance(follower, leader.race_distance_m - DUEL_ALONGSIDE_M)
 		return
 
 	var caught: bool = follower.race_distance_m > leader.race_distance_m - min_gap_m

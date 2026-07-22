@@ -200,12 +200,19 @@ func tick(sim_dt: float) -> void:
 		return
 	weather.tick(sim_time, sim_dt)
 	for car in order:
-		if not car.finished and not car.dnf:
-			_advance_car(car, sim_dt)
+		if car.finished or car.dnf:
+			continue
+		# A dueling attacker doesn't advance on its own pace: it stays glued
+		# alongside the defender (see _maintain_duels), so the pair can never
+		# swap in the sort and yank each other backwards.
+		if car.duel_with >= 0 and car.duel_role == 0:
+			car.total_race_time += sim_dt
+			continue
+		_advance_car(car, sim_dt)
 	sim_time += sim_dt
+	_maintain_duels(sim_dt)
 	order.sort_custom(_position_sort)
 	_update_gaps()
-	_maintain_duels(sim_dt)
 	OvertakeResolver.resolve_all(self)
 	_update_safety_car()
 	if _all_finished():
@@ -213,20 +220,25 @@ func tick(sim_dt: float) -> void:
 		events.append({"type": "race_finished"})
 
 
-## Duel upkeep: advance timers, dissolve broken pairs, enforce the time cap.
+## Duel upkeep: pin attackers alongside their defenders (roles are fixed for
+## the whole duel), advance timers, resolve at the braking zone, dissolve
+## broken pairs. Runs right after the advance pass, before the position sort.
 func _maintain_duels(sim_dt: float) -> void:
 	for car in cars:
-		if car.duel_with < 0:
+		if car.duel_with < 0 or car.duel_role != 0:
 			continue
 		var partner: CarData = cars[car.duel_with]
 		if partner.duel_with != car.index or partner.dnf or partner.in_pit \
 				or partner.finished or car.dnf or car.in_pit or car.finished:
 			car.duel_with = -1
+			partner.duel_with = -1
 			continue
-		if car.duel_role == 0:
-			car.duel_t += sim_dt
-			if car.duel_t > DUEL_MAX_T:
-				_resolve_duel(car)
+		set_race_distance(car, partner.race_distance_m - OvertakeResolver.DUEL_ALONGSIDE_M)
+		car.duel_t += sim_dt
+		# The braking zone: the attacker's (pinned) position enters a corner.
+		var in_corner: bool = track.get_segment(car.segment_index).type == TrackSegment.Type.CORNER
+		if (in_corner and car.duel_t > 0.6) or car.duel_t > DUEL_MAX_T:
+			_resolve_duel(car)
 
 
 ## The braking zone verdict: the pre-rolled outcome is applied and the pair split.
@@ -332,11 +344,6 @@ func _on_segment_complete(car: CarData) -> void:
 	elif car.segment_index == _sector_bounds[1]:
 		_close_sector(car, 1)
 
-	# A dueling attacker reaching a corner entry = the braking zone: decide it.
-	if car.duel_with >= 0 and car.duel_role == 0 \
-			and track.get_segment(car.segment_index).type == TrackSegment.Type.CORNER \
-			and car.duel_t > 0.6:
-		_resolve_duel(car)
 
 
 ## Sector timing for the leaderboard's green/purple dots.
