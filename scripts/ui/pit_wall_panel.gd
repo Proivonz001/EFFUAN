@@ -21,6 +21,7 @@ var _status: Label
 var _timer := 0.0
 var _pit_compound: TyreCompound
 var _pause_button: Button
+var _cam_button: Button
 var _gaps_label: Label
 
 
@@ -71,6 +72,11 @@ func _build(players: Array) -> void:
 		top.add_child(b)
 		_car_buttons.append(b)
 	top.add_child(_spacer())
+	_cam_button = _mk_button("CAM FULL", 96)
+	_cam_button.pressed.connect(func() -> void:
+		manager.cycle_camera()
+		_refresh())
+	top.add_child(_cam_button)
 	_pause_button = _mk_button("❚❚ PAUSE", 100)
 	_pause_button.pressed.connect(func() -> void:
 		manager.toggle_pause()
@@ -168,6 +174,8 @@ func _refresh() -> void:
 	_box_button.text = "BOX ✓" if selected.pit_requested else "BOX"
 	_pause_button.text = "▶ RESUME" if manager.paused else "❚❚ PAUSE"
 	_set_active(_pause_button, manager.paused)
+	_cam_button.text = "CAM " + RaceManager.CAMERA_MODES[manager.camera_mode]
+	_set_active(_cam_button, manager.camera_mode != 0)
 
 	_status.text = "%s   |   Fuel %.1f kg   ERS %d%%   |   %s  wear %d%%  %d°C%s" % [
 		selected.display_name(),

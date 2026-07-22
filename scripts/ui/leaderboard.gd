@@ -21,6 +21,7 @@ func _ready() -> void:
 	manager.positions_changed.connect(_on_positions)
 	manager.leader_lap_changed.connect(_on_leader_lap)
 	manager.overtake_happened.connect(_on_overtake)
+	manager.fastest_lap_set.connect(_on_fastest_lap)
 	_build()
 
 
@@ -104,8 +105,15 @@ func _build() -> void:
 		delta.add_theme_font_size_override("font_size", 13)
 		row.add_child(delta)
 
+		# Last-sector dot: green = personal best, purple = session best.
+		var sector := ColorRect.new()
+		sector.custom_minimum_size = Vector2(7, 7)
+		sector.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sector.color = Color.TRANSPARENT
+		row.add_child(sector)
+
 		vbox.add_child(row)
-		_rows.append({"root": row, "pos": pos, "bar": bar, "code": code, "gap": gap, "tyre": tyre, "wear": wear, "delta": delta})
+		_rows.append({"root": row, "pos": pos, "bar": bar, "code": code, "gap": gap, "tyre": tyre, "wear": wear, "delta": delta, "sector": sector})
 
 
 func _process(delta: float) -> void:
@@ -136,6 +144,13 @@ func _sync_sc_banner() -> void:
 
 func _on_overtake(attacker: CarData, _defender: CarData) -> void:
 	_flash[attacker.index] = FLASH_TIME
+
+
+var _fl_holder := -1
+
+func _on_fastest_lap(car: CarData, _time: float) -> void:
+	_fl_holder = car.index
+	_flash[car.index] = FLASH_TIME + 1.0
 
 
 func _on_positions(order: Array) -> void:
@@ -174,6 +189,14 @@ func _on_positions(order: Array) -> void:
 					UIKit.GOOD if d > 0 else UIKit.BAD)
 		else:
 			widgets.delta.text = ""
+
+		# Sector dot + fastest-lap holder tint.
+		match car.last_sector_status:
+			2: widgets.sector.color = Color(0.72, 0.35, 0.95)
+			1: widgets.sector.color = UIKit.GOOD
+			_: widgets.sector.color = Color.TRANSPARENT
+		if car.index == _fl_holder:
+			widgets.code.add_theme_color_override("font_color", Color(0.82, 0.55, 1.0))
 
 
 func _gap_text(car: CarData, leader: CarData, pos_index: int) -> String:

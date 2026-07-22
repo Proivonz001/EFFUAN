@@ -98,6 +98,11 @@ var sc_ending := false               # "safety car in this lap"
 var _sc_laps_remaining := 0
 var _sc_leader_lap_seen := -1
 
+# Sector timing: the lap splits in 3; boundaries at these segment indices
+# (the third boundary is the start line itself).
+var session_best_sectors: Array = [0.0, 0.0, 0.0]
+var _sector_bounds: Array = []
+
 var _rng := RandomNumberGenerator.new()
 ## Time already consumed inside the current tick when a segment completes —
 ## gives lap/finish times millisecond precision instead of tick quantization.
@@ -126,6 +131,9 @@ func setup(p_track: TrackData, entries: Array, p_laps: int, allowed_compounds: A
 	_rng.seed = seed_value if seed_value != 0 else randi()
 	_track_len = track.total_length_m()
 	_precompute_segment_times()
+	var n_seg := track.segment_count()
+	_sector_bounds = [int(ceil(n_seg / 3.0)), int(ceil(n_seg * 2.0 / 3.0))]
+	session_best_sectors = [0.0, 0.0, 0.0]
 	if p_weather:
 		weather = p_weather
 
@@ -269,7 +277,31 @@ func _on_segment_complete(car: CarData) -> void:
 	if car.segment_index >= track.segment_count():
 		car.segment_index = 0
 		car.laps_crossed += 1
+		_close_sector(car, 2)
 		_on_line_crossed(car)
+	elif car.segment_index == _sector_bounds[0]:
+		_close_sector(car, 0)
+	elif car.segment_index == _sector_bounds[1]:
+		_close_sector(car, 1)
+
+
+## Sector timing for the leaderboard's green/purple dots.
+func _close_sector(car: CarData, sector: int) -> void:
+	var now := sim_time + _tick_time_offset
+	if car.laps_crossed < 1 and sector == 0 and car.sector_start_time == 0.0:
+		car.sector_start_time = now   # first partial sector after the start: ignore
+		return
+	var t := now - car.sector_start_time
+	car.sector_start_time = now
+	if t < 1.0:
+		return
+	car.last_sector_status = 0
+	if car.personal_best_sectors[sector] == 0.0 or t < car.personal_best_sectors[sector]:
+		car.personal_best_sectors[sector] = t
+		car.last_sector_status = 1
+	if session_best_sectors[sector] == 0.0 or t < session_best_sectors[sector]:
+		session_best_sectors[sector] = t
+		car.last_sector_status = 2
 
 
 func _on_line_crossed(car: CarData) -> void:

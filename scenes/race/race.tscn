@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/race/race_manager.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/leaderboard.gd" id="2"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://scripts/ui/results_overlay.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/weather_widget.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/radio_feed.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/ui/fl_banner.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/ui/replay_widget.gd" id="8"]
 
 [node name="Race" type="Node2D"]
 script = ExtResource("1")
@@ -23,6 +25,12 @@ script = ExtResource("5")
 
 [node name="RadioFeed" type="VBoxContainer" parent="UI"]
 script = ExtResource("6")
+
+[node name="FLBanner" type="PanelContainer" parent="UI"]
+script = ExtResource("7")
+
+[node name="ReplayWidget" type="PanelContainer" parent="UI"]
+script = ExtResource("8")
 
 [node name="Results" type="CenterContainer" parent="UI"]
 script = ExtResource("4")

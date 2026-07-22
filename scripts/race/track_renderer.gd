@@ -105,6 +105,10 @@ func _draw() -> void:
 	var closed := _baked.duplicate()
 	closed.append(_baked[0])
 
+	if track_data:
+		_draw_scenery()
+	_draw_pit_lane()
+
 	# Ribbon: edge underlay then asphalt on top; rain darkens the surface.
 	draw_polyline(closed, EDGE, TRACK_WIDTH + 5.0, true)
 	draw_polyline(closed, ASPHALT.lerp(ASPHALT_WET, wetness), TRACK_WIDTH, true)
@@ -114,6 +118,95 @@ func _draw() -> void:
 		_draw_zones()
 		_draw_grid_slots()
 	_draw_start_line()
+
+
+## The pit lane runs on the infield side of the s/f straight; the parked-car
+## slots in Car2D (offset -70-i*26, perp -34) sit exactly on it.
+func _draw_pit_lane() -> void:
+	var lane_pts := PackedVector2Array()
+	var step := 14.0
+	var o := -280.0
+	while o <= 60.0:
+		var off := fposmod(o, _baked_len)
+		var p := sample(off)
+		var dir := direction_at(off)
+		var perp := Vector2(-dir.y, dir.x)
+		# Taper in/out at the ends so the lane merges into the track edge.
+		var depth := 34.0
+		if o < -230.0:
+			depth = remap(o, -280.0, -230.0, 4.0, 34.0)
+		elif o > 20.0:
+			depth = remap(o, 20.0, 60.0, 34.0, 4.0)
+		lane_pts.append(p - perp * depth)
+		o += step
+	draw_polyline(lane_pts, Color(0.75, 0.76, 0.8, 0.5), 15.0)
+	draw_polyline(lane_pts, Color(0.12, 0.13, 0.155), 12.0)
+
+	# Pit building block behind the boxes + label.
+	var mid_off := fposmod(-140.0, _baked_len)
+	var mp := sample(mid_off)
+	var mdir := direction_at(mid_off)
+	var mperp := Vector2(-mdir.y, mdir.x)
+	var b0 := mp - mperp * 50.0 - mdir * 95.0
+	draw_colored_polygon(PackedVector2Array([
+		b0, b0 + mdir * 190.0, b0 + mdir * 190.0 - mperp * 20.0, b0 - mperp * 20.0,
+	]), Color(0.16, 0.175, 0.21))
+	if _label_font == null:
+		_label_font = ThemeDB.fallback_font
+	draw_string(_label_font, mp - mperp * 56.0 + mdir * -14.0, "PIT",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.63, 0.7))
+
+
+## Grandstands along the two longest straights + seeded trees around the map.
+func _draw_scenery() -> void:
+	# Grandstands: outside edge of the main straight and the longest other straight.
+	var straights: Array = []
+	for i in track_data.segment_count():
+		if track_data.get_segment(i).type == TrackSegment.Type.STRAIGHT:
+			straights.append(i)
+	straights.sort_custom(func(a, b): return track_data.get_segment(a).length_m > track_data.get_segment(b).length_m)
+	for s_idx in mini(2, straights.size()):
+		var i: int = straights[s_idx]
+		var o0: float = _seg_offsets[i] + 60.0
+		var o1: float = _seg_offsets[i + 1] - 60.0
+		var o := o0
+		while o < o1:
+			var p := sample(o)
+			var dir := direction_at(o)
+			var perp := Vector2(-dir.y, dir.x)
+			# Stand on the outfield side (opposite the pit lane / infield).
+			var base := p + perp * (TRACK_WIDTH * 0.5 + 16.0)
+			for row in 3:
+				var r0 := base + perp * (row * 7.0)
+				var col := Color(0.14, 0.155, 0.19) if row % 2 == 0 else Color(0.17, 0.185, 0.225)
+				draw_colored_polygon(PackedVector2Array([
+					r0, r0 + dir * 62.0, r0 + dir * 62.0 + perp * 6.0, r0 + perp * 6.0,
+				]), col)
+			o += 78.0
+
+	# Trees: deterministic per track, rejected if they'd overlap any track piece.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(track_data.id)
+	var coarse := PackedVector2Array()
+	for j in range(0, _baked.size(), 6):
+		coarse.append(_baked[j])
+	for attempt in 46:
+		var off := rng.randf() * _baked_len
+		var p := sample(off)
+		var dir := direction_at(off)
+		var perp := Vector2(-dir.y, dir.x)
+		var side := 1.0 if rng.randf() < 0.5 else -1.0
+		var pos := p + perp * side * rng.randf_range(75.0, 170.0)
+		var clear := true
+		for cp in coarse:
+			if cp.distance_squared_to(pos) < 3600.0:
+				clear = false
+				break
+		if not clear:
+			continue
+		var r := rng.randf_range(6.0, 11.0)
+		draw_circle(pos, r, Color(0.10, 0.16, 0.11))
+		draw_circle(pos, r * 0.62, Color(0.13, 0.21, 0.14))
 	if Engine.is_editor_hint() and track_data:
 		_draw_segment_tints()
 

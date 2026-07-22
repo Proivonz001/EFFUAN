@@ -12,6 +12,8 @@ signal race_finished(classification: Array)
 signal leader_lap_changed(lap: int, total: int)
 signal dnf_happened(car: CarData)
 signal sc_changed(phase: String)
+signal fastest_lap_set(car: CarData, time: float)
+signal replay_ready(data: Dictionary)
 
 const SIM_TICK := 0.05
 const TIME_SCALES: Array[float] = [1.0, 4.0, 8.0]
@@ -21,6 +23,10 @@ var time_scale_index := 1            # default 4x: 8x proved too fast to make ca
 var race_running := false
 var paused := true                   # races start paused behind a START button
 
+const CAMERA_MODES := ["FULL", "TV", "CAR"]
+
+var camera_mode := 0
+
 var _accumulator := 0.0
 var _track_data: TrackData
 var _renderer: TrackRenderer
@@ -28,6 +34,13 @@ var _car_nodes: Array = []
 var _last_leader_lap := 0
 var _positions_timer := 0.0
 var _rain: CPUParticles2D
+var _camera: Camera2D
+var _cam_battle: Array = []          # the two CarData currently framed by TV mode
+var _cam_battle_timer := 0.0
+var _session_fl := 1e9
+var _replay_frames: Array = []       # ring buffer: {p: PackedVector2Array, r: PackedFloat32Array}
+var _replay_timer := 0.0
+var _last_replay_ms := -100000
 
 
 # Children (UI panels) read the engine in their _ready, which runs BEFORE the
@@ -96,6 +109,16 @@ func _setup_race() -> void:
 		car_layer.add_child(node)
 		node.setup(car, _renderer)
 		_car_nodes.append(node)
+
+	# Broadcast camera + battle highlight overlay.
+	_camera = Camera2D.new()
+	_camera.position = Vector2(960, 540)
+	add_child(_camera)
+	_camera.make_current()
+	var battles := BattleOverlay.new()
+	battles.manager = self
+	battles.z_index = 5
+	add_child(battles)
 
 	race_running = true
 	if "--autostart" in OS.get_cmdline_user_args():
@@ -167,6 +190,10 @@ func _sync_weather_visuals() -> void:
 	if _rain:
 		_rain.emitting = w.intensity > 0.05
 		_rain.modulate = Color(1, 1, 1, clampf(0.25 + w.intensity, 0.0, 1.0))
+		if _camera:
+			# Keep the rain sheet over the camera view at any zoom.
+			_rain.position = _camera.position - Vector2(0, 160.0 / _camera.zoom.x)
+			_rain.emission_rect_extents = Vector2(1100, 620) / _camera.zoom.x
 	Sfx.set_ambient_pitch(0.8 + 0.15 * time_scale_index)
 
 
@@ -248,6 +275,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			set_time_scale(1)
 		KEY_3:
 			set_time_scale(2)
+		KEY_C:
+			cycle_camera()
+
+
+func _process(delta: float) -> void:
+	_update_camera(delta)
+	if race_running and not paused:
+		_record_replay_frame(delta)
 
 
 func _physics_process(delta: float) -> void:
@@ -275,8 +310,12 @@ func _drain_events() -> void:
 		match ev.type:
 			"lap":
 				lap_completed.emit(ev.car, ev.lap, ev.time)
+				if ev.time < _session_fl:
+					_session_fl = ev.time
+					fastest_lap_set.emit(ev.car, ev.time)
 			"overtake":
 				overtake_happened.emit(ev.attacker, ev.defender)
+				_maybe_replay(ev.attacker, ev.defender)
 			"pit_in":
 				pit_event.emit(ev.car, true)
 			"pit_out":
@@ -307,6 +346,128 @@ func toggle_pause() -> void:
 	if overlay:
 		overlay.queue_free()
 	paused = not paused
+
+
+func cycle_camera() -> void:
+	camera_mode = (camera_mode + 1) % CAMERA_MODES.size()
+
+
+func car_node(index: int) -> Car2D:
+	return _car_nodes[index]
+
+
+# ---------------------------------------------------------- broadcast camera -
+
+func _update_camera(delta: float) -> void:
+	if _camera == null:
+		return
+	var target := Vector2(960, 540)
+	var zoom := 1.0
+	match camera_mode:
+		1:   # TV: frame the most interesting battle, sticky for a few seconds.
+			_cam_battle_timer -= delta
+			if _cam_battle_timer <= 0.0 or not _battle_still_valid():
+				_cam_battle = _pick_battle()
+				_cam_battle_timer = 3.0
+			if _cam_battle.size() == 2:
+				var a := car_node(_cam_battle[0].index)
+				var b := car_node(_cam_battle[1].index)
+				target = (a.position + b.position) * 0.5
+				zoom = 1.9
+			elif not engine.order.is_empty():
+				target = car_node(engine.order[0].index).position
+				zoom = 1.9
+		2:   # CAR: chase the player's lead car.
+			var players := player_cars()
+			if not players.is_empty():
+				target = car_node(players[0].index).position
+				zoom = 2.1
+	_camera.position = _camera.position.lerp(target, minf(delta * 3.0, 1.0))
+	var z := _camera.zoom.x + (zoom - _camera.zoom.x) * minf(delta * 2.5, 1.0)
+	_camera.zoom = Vector2(z, z)
+
+
+func _battle_still_valid() -> bool:
+	if _cam_battle.size() != 2:
+		return false
+	for car in _cam_battle:
+		if car.finished or car.dnf or car.in_pit:
+			return false
+	return _cam_battle[1].gap_ahead_s < 1.6
+
+
+func _pick_battle() -> Array:
+	var best: Array = []
+	var best_score := -1e9
+	var order: Array = engine.order
+	for i in range(1, order.size()):
+		var lead: CarData = order[i - 1]
+		var chase: CarData = order[i]
+		if lead.finished or chase.finished or lead.dnf or chase.dnf \
+				or lead.in_pit or chase.in_pit or chase.gap_ahead_s > 1.2:
+			continue
+		var score := 20.0 - i - chase.gap_ahead_s * 4.0
+		if lead.is_player or chase.is_player:
+			score += 6.0
+		if score > best_score:
+			best_score = score
+			best = [lead, chase]
+	return best
+
+
+# ------------------------------------------------------------ replay capture -
+
+func _record_replay_frame(delta: float) -> void:
+	_replay_timer += delta
+	if _replay_timer < 0.1:
+		return
+	_replay_timer = 0.0
+	var pos := PackedVector2Array()
+	var rot := PackedFloat32Array()
+	for node: Car2D in _car_nodes:
+		pos.append(node.position)
+		rot.append(node.rotation)
+	_replay_frames.append({"p": pos, "r": rot})
+	while _replay_frames.size() > 55:
+		_replay_frames.pop_front()
+
+
+## A top-6 or player overtake triggers the mini replay (with a cooldown).
+func _maybe_replay(attacker: CarData, defender: CarData) -> void:
+	var notable: bool = attacker.is_player or defender.is_player \
+			or engine.order.find(attacker) <= 5
+	var now := Time.get_ticks_msec()
+	if not notable or now - _last_replay_ms < 25000 or _replay_frames.size() < 25:
+		return
+	_last_replay_ms = now
+	var frames: Array = []
+	for f in _replay_frames:
+		frames.append({
+			"a": f.p[attacker.index], "ar": f.r[attacker.index],
+			"b": f.p[defender.index], "br": f.r[defender.index],
+		})
+	# Local track geometry inside the action's bounding box.
+	var bbox := Rect2(frames[0].a, Vector2.ZERO)
+	for f in frames:
+		bbox = bbox.expand(f.a).expand(f.b)
+	bbox = bbox.grow(70.0)
+	var chunks: Array = []
+	var run := PackedVector2Array()
+	for p in _renderer._baked:
+		if bbox.has_point(p):
+			run.append(p)
+		elif run.size() > 1:
+			chunks.append(run)
+			run = PackedVector2Array()
+		else:
+			run = PackedVector2Array()
+	if run.size() > 1:
+		chunks.append(run)
+	replay_ready.emit({
+		"frames": frames, "bbox": bbox, "chunks": chunks,
+		"code_a": attacker.short_code(), "code_b": defender.short_code(),
+		"col_a": attacker.team.primary_color, "col_b": defender.team.primary_color,
+	})
 
 
 ## Live gaps for the selected car's pit-wall readout: [ahead_s, behind_s] (-1 = none).
