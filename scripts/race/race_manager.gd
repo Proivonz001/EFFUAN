@@ -230,6 +230,11 @@ func _build_start_overlay() -> void:
 		start.visible = false
 		_run_start_lights(overlay, vbox))
 	vbox.add_child(start)
+	# Debug: --auto-lights presses START by itself (for scripted recordings).
+	if "--auto-lights" in OS.get_cmdline_user_args():
+		get_tree().create_timer(2.5).timeout.connect(func() -> void:
+			if is_instance_valid(start) and start.visible:
+				start.pressed.emit())
 
 
 ## Five red lights... and it's lights out.
