@@ -30,6 +30,8 @@ var wetness := 0.0:
 var _baked: PackedVector2Array = []
 var _baked_len: float = 0.0
 var _label_font: Font
+## Curve offset (px) where each segment starts; [n] = full length (wrap).
+var _seg_offsets: PackedFloat32Array = []
 
 
 func _ready() -> void:
@@ -41,7 +43,37 @@ func _refresh() -> void:
 		return
 	_baked = path.curve.get_baked_points()
 	_baked_len = path.curve.get_baked_length()
+	_build_segment_offsets()
 	queue_redraw()
+
+
+## Anchor-aligned sim->curve mapping (falls back to proportional-by-length).
+func _build_segment_offsets() -> void:
+	_seg_offsets.clear()
+	if track_data == null:
+		return
+	var n := track_data.segment_count()
+	var idx := track_data.segment_anchor_indices
+	_seg_offsets.resize(n + 1)
+	if idx.size() == n and path.anchor_points.size() > 0:
+		for i in n:
+			var anchor := path.anchor_points[idx[i]]
+			_seg_offsets[i] = path.curve.get_closest_offset(anchor)
+		_seg_offsets[0] = 0.0
+	else:
+		var total := track_data.total_length_m()
+		for i in n:
+			_seg_offsets[i] = track_data.cum_length_m(i) / total * _baked_len
+	_seg_offsets[n] = _baked_len
+
+
+## Visual curve offset for a sim position (segment index + 0-1 progress).
+func segment_offset(seg: int, progress: float) -> float:
+	if _seg_offsets.is_empty():
+		_refresh()
+		if _seg_offsets.is_empty():
+			return 0.0
+	return lerpf(_seg_offsets[seg], _seg_offsets[seg + 1], clampf(progress, 0.0, 1.0))
 
 
 func baked_length() -> float:
@@ -80,45 +112,67 @@ func _draw() -> void:
 	if track_data:
 		_draw_kerbs()
 		_draw_zones()
+		_draw_grid_slots()
 	_draw_start_line()
 	if Engine.is_editor_hint() and track_data:
 		_draw_segment_tints()
 
 
-## Red/white dashes along both edges of every corner.
+## Red/white dashes along both edges of every corner + corner numbers.
 func _draw_kerbs() -> void:
-	var total := track_data.total_length_m()
+	if _label_font == null:
+		_label_font = ThemeDB.fallback_font
+	var corner_n := 0
 	for i in track_data.segment_count():
 		var seg := track_data.get_segment(i)
 		if seg.type != TrackSegment.Type.CORNER:
 			continue
-		var f0 := track_data.cum_length_m(i) / total
-		var f1 := f0 + seg.length_m / total
-		var span_px := (f1 - f0) * _baked_len
-		var dashes := maxi(int(span_px / KERB_DASH_PX), 2)
+		corner_n += 1
+		var o0 := _seg_offsets[i]
+		var o1 := _seg_offsets[i + 1]
+		var dashes := maxi(int((o1 - o0) / KERB_DASH_PX), 2)
 		for d in dashes:
-			var fa := lerpf(f0, f1, float(d) / dashes)
-			var fb := lerpf(f0, f1, (d + 0.82) / dashes)
-			var pa := sample(fa * _baked_len)
-			var pb := sample(fb * _baked_len)
+			var pa := sample(lerpf(o0, o1, float(d) / dashes))
+			var pb := sample(lerpf(o0, o1, (d + 0.82) / dashes))
 			var dir := (pb - pa).normalized()
 			var perp := Vector2(-dir.y, dir.x)
 			var col := KERB_RED if d % 2 == 0 else KERB_WHITE
 			var off := TRACK_WIDTH * 0.5 + 3.5
 			draw_line(pa + perp * off, pb + perp * off, col, 4.5)
 			draw_line(pa - perp * off, pb - perp * off, col, 4.5)
+		# Corner number, tucked outside the apex.
+		var mid := sample((o0 + o1) * 0.5)
+		var mdir := direction_at((o0 + o1) * 0.5)
+		var mperp := Vector2(-mdir.y, mdir.x)
+		# Outward = away from the polygon centroid.
+		var centroid := Vector2(960, 480)
+		var outward: Vector2 = mperp if mperp.dot(mid - centroid) > 0.0 else -mperp
+		draw_string(_label_font, mid + outward * (TRACK_WIDTH * 0.5 + 22.0) + Vector2(-8, 5),
+				"T%d" % corner_n, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.53, 0.6))
+
+
+## Staggered grid slot markers behind the start line (first 10 boxes only,
+## so they stay on the straight).
+func _draw_grid_slots() -> void:
+	for i in 10:
+		var off := fposmod(-26.0 - i * 14.0, _baked_len)
+		var p := sample(off)
+		var dir := direction_at(off)
+		var perp := Vector2(-dir.y, dir.x)
+		var lane := 7.0 if i % 2 == 0 else -7.0
+		var base := p + perp * lane
+		draw_line(base - perp * 4.5, base + perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
+		draw_line(base - perp * 4.5 + dir * 6.0, base - perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
+		draw_line(base + perp * 4.5 + dir * 6.0, base + perp * 4.5, Color(1, 1, 1, 0.30), 2.0)
 
 
 ## DRS zones as a thin stripe along the edge of the ribbon, off the racing line.
 func _draw_zones() -> void:
-	var total := track_data.total_length_m()
 	for i in track_data.segment_count():
 		var seg := track_data.get_segment(i)
 		if not seg.drs_zone:
 			continue
-		var f0 := track_data.cum_length_m(i) / total
-		var f1 := f0 + seg.length_m / total
-		var pts := _points_between(f0, f1)
+		var pts := _points_between_offsets(_seg_offsets[i], _seg_offsets[i + 1])
 		if pts.size() < 2:
 			continue
 		var edge_pts := PackedVector2Array()
@@ -152,12 +206,9 @@ func _draw_start_line() -> void:
 
 
 func _draw_segment_tints() -> void:
-	var total := track_data.total_length_m()
 	for i in track_data.segment_count():
 		var seg := track_data.get_segment(i)
-		var f0 := track_data.cum_length_m(i) / total
-		var f1 := f0 + seg.length_m / total
-		var pts := _points_between(f0, f1)
+		var pts := _points_between_offsets(_seg_offsets[i], _seg_offsets[i + 1])
 		if pts.size() < 2:
 			continue
 		var col := Color(0.3, 0.9, 0.3, 0.8)
@@ -167,10 +218,9 @@ func _draw_segment_tints() -> void:
 		draw_circle(pts[0], 5.0, Color.WHITE)
 
 
-func _points_between(f0: float, f1: float) -> PackedVector2Array:
+func _points_between_offsets(o0: float, o1: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
-	var steps := maxi(int((f1 - f0) * 80.0), 2)
+	var steps := maxi(int((o1 - o0) / 14.0), 2)
 	for s in steps + 1:
-		var f := lerpf(f0, f1, float(s) / steps)
-		pts.append(sample(f * _baked_len))
+		pts.append(sample(lerpf(o0, o1, float(s) / steps)))
 	return pts

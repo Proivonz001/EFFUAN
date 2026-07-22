@@ -31,6 +31,8 @@ var _ers_dot: Polygon2D
 var _shadow: Polygon2D
 var _glow: Node2D
 var _trail: Line2D
+var _tag: Node2D
+var _tag_label: Label
 
 
 func setup(p_car: CarData, p_renderer: TrackRenderer) -> void:
@@ -97,6 +99,20 @@ func setup(p_car: CarData, p_renderer: TrackRenderer) -> void:
 	_ers_dot.visible = false
 	add_child(_ers_dot)
 
+	# Driver code tag — counter-rotated child so it always reads horizontally.
+	_tag = Node2D.new()
+	add_child(_tag)
+	_tag_label = Label.new()
+	_tag_label.text = car.driver.code
+	_tag_label.add_theme_font_size_override("font_size", 11)
+	_tag_label.add_theme_color_override("font_color",
+			Color.WHITE if car.is_player else Color(car.team.primary_color.lightened(0.35), 0.9))
+	_tag_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	_tag_label.add_theme_constant_override("shadow_offset_x", 1)
+	_tag_label.add_theme_constant_override("shadow_offset_y", 1)
+	_tag_label.position = Vector2(-12, -34)
+	_tag.add_child(_tag_label)
+
 	_visual_offset = _target_offset()
 	_apply_transform(0.0)
 
@@ -108,10 +124,8 @@ func _process(delta: float) -> void:
 
 
 func _target_offset() -> float:
-	var total := car.race_distance_m
-	var track := renderer.track_data
-	var lap_fraction := fposmod(total, track.total_length_m()) / track.total_length_m()
-	return renderer.lap_fraction_to_offset(lap_fraction)
+	# Segment-anchored mapping: the car is exactly where its sim segment is drawn.
+	return renderer.segment_offset(car.segment_index, car.segment_progress)
 
 
 func _apply_transform(delta: float) -> void:
@@ -167,6 +181,12 @@ func _apply_transform(delta: float) -> void:
 	_ers_dot.visible = deploying and not car.in_pit and not car.dnf
 	if _ers_dot.visible:
 		_ers_dot.color = Color(ERS_COLOR, 0.55 + 0.45 * sin(Time.get_ticks_msec() * 0.02))
+
+	# Keep the code tag horizontal and readable.
+	if _tag:
+		_tag.rotation = -rotation
+		_tag.visible = not car.dnf
+		_tag_label.modulate = Color(1, 1, 1, 0.45 if car.in_pit else 1.0)
 
 	# Trail (world-space points, newest first).
 	if _trail:

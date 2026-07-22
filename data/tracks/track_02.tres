@@ -125,3 +125,4 @@ df_bias = -0.6
 base_lap_time = 80.0
 ambient_temp_c = 23.0
 scene_path = "res://scenes/race/tracks/track_02.tscn"
+segment_anchor_indices = PackedInt32Array(0, 2, 4, 6, 8, 9, 11, 12, 14, 15, 17, 20, 22, 24)

@@ -12,6 +12,10 @@ extends Resource
 @export var base_lap_time: float = 80.0
 @export var ambient_temp_c: float = 24.0
 @export var scene_path: String = ""
+## Anchor index (in TrackPath.anchor_points) where each segment starts.
+## Aligns the sim segments with the drawn curve — cars, kerbs and DRS stripes
+## all land exactly where the corner is drawn. Empty = legacy proportional map.
+@export var segment_anchor_indices: PackedInt32Array = []
 
 var _total_length: float = -1.0
 var _cum_lengths: PackedFloat32Array = []
