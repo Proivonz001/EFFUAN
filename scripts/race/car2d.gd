@@ -80,9 +80,25 @@ func _target_offset() -> float:
 
 func _apply_transform(delta: float) -> void:
 	var L := renderer.baked_length()
+
+	# Pit stop: park beside the start line instead of freezing on the racing line.
+	if car.in_pit:
+		var line_dir := renderer.direction_at(0.0)
+		var line_perp := Vector2(-line_dir.y, line_dir.x)
+		var slot := renderer.sample(fposmod(-70.0 - (car.index % 5) * 26.0, L)) \
+				- line_perp * 34.0
+		position = position.lerp(slot, minf(delta * 6.0, 1.0))
+		_visual_offset = fposmod(-70.0, L)
+		return
+
 	var target := _target_offset()
 	# Shortest-path circular lerp so the s/f wrap doesn't snap the car backward.
 	var diff := fposmod(target - _visual_offset + L * 0.5, L) - L * 0.5
+	# The train clamp nudges the sim position backward a few meters every tick;
+	# chasing those nudges reads as stop-and-go stutter. Hold instead, and let
+	# the forward motion of the next ticks re-absorb the offset.
+	if diff < 0.0 and diff > -60.0:
+		diff = 0.0
 	_visual_offset = fposmod(_visual_offset + diff * minf(delta * SMOOTHING, 1.0), L)
 
 	var lane_target := (LANE_BATTLE_PX if car.in_battle else LANE_BASE_PX) * _lane_side

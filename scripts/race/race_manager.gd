@@ -15,8 +15,9 @@ const SIM_TICK := 0.05
 const TIME_SCALES: Array[float] = [1.0, 4.0, 8.0]
 
 var engine := RaceEngine.new()
-var time_scale_index := 2
+var time_scale_index := 1            # default 4x: 8x proved too fast to make calls
 var race_running := false
+var paused := true                   # races start paused behind a START button
 
 var _accumulator := 0.0
 var _track_data: TrackData
@@ -30,6 +31,13 @@ var _positions_timer := 0.0
 # parent's _ready — so the race must be assembled in _enter_tree.
 func _enter_tree() -> void:
 	_setup_race()
+
+
+# Runs after every child is ready: push the initial grid to the UI, since the
+# race starts paused and the periodic updates only flow once it's running.
+func _ready() -> void:
+	positions_changed.emit(engine.get_classification())
+	leader_lap_changed.emit(1, engine.race_laps)
 
 
 func _setup_race() -> void:
@@ -84,12 +92,63 @@ func _setup_race() -> void:
 		_car_nodes.append(node)
 
 	race_running = true
+	if "--autostart" in OS.get_cmdline_user_args():
+		paused = false
+	else:
+		_build_start_overlay.call_deferred()
 	leader_lap_changed.emit(1, engine.race_laps)
 	positions_changed.emit(engine.get_classification())
 
 
+func _build_start_overlay() -> void:
+	var overlay := CenterContainer.new()
+	overlay.name = "StartOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	get_node("UI").add_child(overlay)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	overlay.add_child(vbox)
+	var info := Label.new()
+	info.text = "%s  —  %d LAPS" % [_track_data.track_name.to_upper(), engine.race_laps]
+	info.add_theme_font_size_override("font_size", 22)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(info)
+	var hint := Label.new()
+	hint.text = "SPACE pauses any time  ·  keys 1 / 2 / 3 set speed"
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_color_override("font_color", Color(0.7, 0.72, 0.78))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(hint)
+	var start := Button.new()
+	start.text = "START RACE"
+	start.custom_minimum_size = Vector2(280, 60)
+	start.add_theme_font_size_override("font_size", 22)
+	start.focus_mode = Control.FOCUS_NONE
+	start.pressed.connect(func() -> void:
+		paused = false
+		overlay.queue_free())
+	vbox.add_child(start)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not race_running or event.is_echo() or not event.is_pressed():
+		return
+	match event.keycode:
+		KEY_SPACE:
+			var overlay := get_node_or_null("UI/StartOverlay")
+			if overlay:
+				overlay.queue_free()
+			paused = not paused
+		KEY_1:
+			set_time_scale(0)
+		KEY_2:
+			set_time_scale(1)
+		KEY_3:
+			set_time_scale(2)
+
+
 func _physics_process(delta: float) -> void:
-	if not race_running:
+	if not race_running or paused:
 		return
 	_accumulator += delta
 	while _accumulator >= SIM_TICK:
@@ -128,6 +187,25 @@ func _drain_events() -> void:
 
 func set_time_scale(index: int) -> void:
 	time_scale_index = clampi(index, 0, TIME_SCALES.size() - 1)
+
+
+func toggle_pause() -> void:
+	var overlay := get_node_or_null("UI/StartOverlay")
+	if overlay:
+		overlay.queue_free()
+	paused = not paused
+
+
+## Live gaps for the selected car's pit-wall readout: [ahead_s, behind_s] (-1 = none).
+func gaps_around(car: CarData) -> Array:
+	var idx := engine.order.find(car)
+	var ahead := -1.0
+	var behind := -1.0
+	if idx > 0:
+		ahead = car.gap_ahead_s
+	if idx >= 0 and idx < engine.order.size() - 1:
+		behind = engine.order[idx + 1].gap_ahead_s
+	return [ahead, behind]
 
 
 func player_cars() -> Array:

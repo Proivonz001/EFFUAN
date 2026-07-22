@@ -3,12 +3,16 @@ extends Control
 ## The out-of-race dashboard: standings, next race card, R&D program.
 ## Fast navigation, zero menu bloat: one screen, one CONTINUE button.
 
-const PILLARS := ["aero", "power", "chassis"]
+const PILLARS := ["aero", "power", "chassis", "reliability"]
 
-var _selected_pillar := ""
-var _selected_risk := 1
+var _selected_pillar := "aero"
+var _selected_variant := 1
 var _pillar_buttons := {}
-var _risk_buttons: Array = []
+var _variant_buttons: Array = []
+var _buy_button: Button
+var _xp_label: Label
+var _rnd_msg: Label
+var _progress_box: VBoxContainer
 var _showing_other_series := false
 var _standings_box: VBoxContainer
 var _toggle_series_btn: Button
@@ -225,11 +229,23 @@ func _build_rnd_panel(parent: Node) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	panel.add_child(v)
+
+	var head_row := HBoxContainer.new()
+	v.add_child(head_row)
 	var head := Label.new()
-	head.text = "R&D PROGRAM  (resolves after the race)"
+	head.text = "R&D — spend XP on upgrades, delivered after N races"
 	head.add_theme_font_size_override("font_size", 13)
 	head.add_theme_color_override("font_color", Color(0.6, 0.63, 0.7))
-	v.add_child(head)
+	head_row.add_child(head)
+	head_row.add_child(_hspacer())
+	_xp_label = Label.new()
+	_xp_label.add_theme_font_size_override("font_size", 18)
+	_xp_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.65))
+	head_row.add_child(_xp_label)
+
+	# Upgrades in delivery.
+	_progress_box = VBoxContainer.new()
+	v.add_child(_progress_box)
 
 	var bonuses: Dictionary = GameState.rnd_bonuses.get(GameState.player_team_id, {})
 	var pillar_row := HBoxContainer.new()
@@ -237,8 +253,11 @@ func _build_rnd_panel(parent: Node) -> void:
 	v.add_child(pillar_row)
 	for pillar in PILLARS:
 		var b := Button.new()
-		b.text = "%s  %+.1f" % [pillar.to_upper(), bonuses.get(pillar, 0.0)]
-		b.custom_minimum_size = Vector2(130, 46)
+		if pillar == "reliability":
+			b.text = "REL FIX"
+		else:
+			b.text = "%s  %+.1f" % [pillar.to_upper(), bonuses.get(pillar, 0.0)]
+		b.custom_minimum_size = Vector2(120, 46)
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func() -> void:
 			_selected_pillar = pillar
@@ -246,37 +265,79 @@ func _build_rnd_panel(parent: Node) -> void:
 		pillar_row.add_child(b)
 		_pillar_buttons[pillar] = b
 
-	var risk_row := HBoxContainer.new()
-	risk_row.add_theme_constant_override("separation", 6)
-	v.add_child(risk_row)
-	for i in GameState.RND_RISK.size():
-		var r: Dictionary = GameState.RND_RISK[i]
+	var variant_row := HBoxContainer.new()
+	variant_row.add_theme_constant_override("separation", 6)
+	v.add_child(variant_row)
+	for i in GameState.UPGRADE_VARIANTS.size():
 		var b := Button.new()
-		b.text = "%s  %d%%" % [r.name, int(r.chance * 100.0)]
-		b.custom_minimum_size = Vector2(130, 40)
+		b.custom_minimum_size = Vector2(155, 52)
 		b.focus_mode = Control.FOCUS_NONE
+		var idx := i
 		b.pressed.connect(func() -> void:
-			_selected_risk = i
+			_selected_variant = idx
 			_sync_rnd())
-		risk_row.add_child(b)
-		_risk_buttons.append(b)
+		variant_row.add_child(b)
+		_variant_buttons.append(b)
+	_buy_button = Button.new()
+	_buy_button.text = "BUY"
+	_buy_button.custom_minimum_size = Vector2(90, 52)
+	_buy_button.add_theme_font_size_override("font_size", 17)
+	_buy_button.focus_mode = Control.FOCUS_NONE
+	_buy_button.pressed.connect(_on_buy)
+	variant_row.add_child(_buy_button)
 
-	# Restore a previously scheduled program.
-	if not GameState.pending_rnd.is_empty():
-		_selected_pillar = GameState.pending_rnd.pillar
-		_selected_risk = GameState.pending_rnd.risk
+	_rnd_msg = Label.new()
+	_rnd_msg.add_theme_font_size_override("font_size", 13)
+	_rnd_msg.add_theme_color_override("font_color", Color(0.95, 0.6, 0.4))
+	v.add_child(_rnd_msg)
+	_sync_rnd()
+
+
+func _selected_variant_data() -> Dictionary:
+	if _selected_pillar == "reliability":
+		return GameState.RELIABILITY_FIX
+	return GameState.UPGRADE_VARIANTS[_selected_variant]
+
+
+func _on_buy() -> void:
+	var err: String = GameState.purchase_upgrade(_selected_pillar, _selected_variant_data())
+	_rnd_msg.text = err if err != "" else "Ordered — engineers are on it."
 	_sync_rnd()
 
 
 func _sync_rnd() -> void:
+	_xp_label.text = "%d XP" % GameState.dev_points
 	for pillar in _pillar_buttons:
 		_pillar_buttons[pillar].modulate = \
 				Color(0.55, 1.0, 0.65) if pillar == _selected_pillar else Color.WHITE
-	for i in _risk_buttons.size():
-		_risk_buttons[i].modulate = \
-				Color(0.55, 1.0, 0.65) if i == _selected_risk else Color.WHITE
-	if _selected_pillar != "":
-		GameState.pending_rnd = {"pillar": _selected_pillar, "risk": _selected_risk}
+	var rel_mode: bool = _selected_pillar == "reliability"
+	for i in _variant_buttons.size():
+		var b: Button = _variant_buttons[i]
+		if rel_mode:
+			b.visible = i == 0
+			var fix: Dictionary = GameState.RELIABILITY_FIX
+			b.text = "rel %+.1f\n%d XP · %d race" % [fix.rel, int(fix.cost), int(fix.races)]
+			b.modulate = Color(0.55, 1.0, 0.65)
+		else:
+			b.visible = true
+			var vr: Dictionary = GameState.UPGRADE_VARIANTS[i]
+			b.text = "%s\n%+.1f stat, rel %+.1f\n%d XP · %d races" % [
+					vr.name, vr.gain, vr.rel, int(vr.cost), int(vr.races)]
+			b.modulate = Color(0.55, 1.0, 0.65) if i == _selected_variant else Color.WHITE
+	var variant := _selected_variant_data()
+	_buy_button.disabled = GameState.dev_points < int(variant.cost) \
+			or GameState.active_upgrades.size() >= GameState.MAX_ACTIVE_UPGRADES
+
+	for child in _progress_box.get_children():
+		child.queue_free()
+	for up in GameState.active_upgrades:
+		var row := Label.new()
+		var races_left := int(up.races_left)
+		row.text = "IN PROGRESS: %s %s — ready in %d race%s" % [
+				up.name, str(up.pillar).to_upper(), races_left, "" if races_left == 1 else "s"]
+		row.add_theme_font_size_override("font_size", 13)
+		row.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
+		_progress_box.add_child(row)
 
 
 func _build_team_card(parent: Node) -> void:

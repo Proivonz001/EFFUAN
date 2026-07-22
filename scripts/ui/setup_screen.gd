@@ -8,6 +8,7 @@ var _quali_box: VBoxContainer
 var _start_btn: Button
 var _quali_btn: Button
 var _engineer: Label
+var _setup_value: Label
 
 
 func _ready() -> void:
@@ -61,7 +62,7 @@ func _ready() -> void:
 	slider_row.add_theme_constant_override("separation", 10)
 	left.add_child(slider_row)
 	var lo := Label.new()
-	lo.text = "LOW DRAG"
+	lo.text = "LOW DRAG\n-1.0"
 	lo.add_theme_font_size_override("font_size", 13)
 	slider_row.add_child(lo)
 	_slider = HSlider.new()
@@ -69,13 +70,20 @@ func _ready() -> void:
 	_slider.max_value = 1.0
 	_slider.step = 0.05
 	_slider.value = GameState.pending_setup_bias
-	_slider.custom_minimum_size = Vector2(320, 32)
+	_slider.tick_count = 9
+	_slider.ticks_on_borders = true
+	_slider.custom_minimum_size = Vector2(340, 36)
 	_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_slider.value_changed.connect(func(_v: float) -> void: _update_setup_readout())
 	slider_row.add_child(_slider)
 	var hi := Label.new()
-	hi.text = "HIGH DOWNFORCE"
+	hi.text = "HIGH DOWNFORCE\n+1.0"
 	hi.add_theme_font_size_override("font_size", 13)
 	slider_row.add_child(hi)
+
+	_setup_value = Label.new()
+	_setup_value.add_theme_font_size_override("font_size", 16)
+	left.add_child(_setup_value)
 
 	_engineer = Label.new()
 	_engineer.add_theme_font_size_override("font_size", 14)
@@ -87,6 +95,7 @@ func _ready() -> void:
 		hint = "Engineer: it's all corners out there — load up on downforce."
 	_engineer.text = hint
 	left.add_child(_engineer)
+	_update_setup_readout()
 
 	# Driver confidence card.
 	var team: TeamData = GameData.teams[GameState.player_team_id]
@@ -186,6 +195,26 @@ func _on_qualify() -> void:
 	_quali_btn.disabled = true
 	_slider.editable = false
 	_start_btn.visible = true
+
+
+func _update_setup_readout() -> void:
+	if _setup_value == null:
+		return
+	var v: float = _slider.value
+	var zone := "balanced"
+	if v <= -0.6:
+		zone = "very low drag"
+	elif v <= -0.2:
+		zone = "low drag"
+	elif v >= 0.6:
+		zone = "maximum downforce"
+	elif v >= 0.2:
+		zone = "high downforce"
+	_setup_value.text = "Setting: %+.2f  (%s)   —   corners %s, straights %s" % [
+		v, zone,
+		"faster" if v > 0.05 else ("slower" if v < -0.05 else "neutral"),
+		"slower" if v > 0.05 else ("faster" if v < -0.05 else "neutral"),
+	]
 
 
 func _vspacer() -> Control:

@@ -6,12 +6,16 @@ const SAVE_PATH := "user://career.json"
 const SERIES_IDS := ["effuan_one", "effuan_two"]
 const RELEGATION_SPOTS := 2
 
-# R&D risk levels: chance of success, stat gain on success, reliability shift (always applied).
-const RND_RISK := [
-	{"name": "SAFE", "chance": 0.90, "gain": 1.2, "rel": 1.0},
-	{"name": "BALANCED", "chance": 0.68, "gain": 2.5, "rel": 0.0},
-	{"name": "AGGRESSIVE", "chance": 0.48, "gain": 5.0, "rel": -2.5},
+# R&D is XP-driven (F1-game style): weekend performance earns dev points,
+# spent on upgrades that take N races to be delivered.
+const UPGRADE_VARIANTS := [
+	{"name": "CONSERVATIVE", "gain": 1.5, "rel": 0.5, "cost": 25, "races": 1},
+	{"name": "STANDARD", "gain": 2.5, "rel": -0.5, "cost": 35, "races": 2},
+	{"name": "AGGRESSIVE", "gain": 4.0, "rel": -2.0, "cost": 40, "races": 2},
 ]
+const RELIABILITY_FIX := {"name": "RELIABILITY FIX", "gain": 0.0, "rel": 3.0, "cost": 20, "races": 1}
+const MAX_ACTIVE_UPGRADES := 2
+const XP_BASE_PER_WEEKEND := 10
 
 const CONFIDENCE_SETUP_BONUS := 3.0
 const CONFIDENCE_MIN := 15.0
@@ -27,8 +31,10 @@ var player_series_id := "effuan_two"
 var series_state := {}
 ## team_id -> {aero, power, chassis, rel}
 var rnd_bonuses := {}
-## Player's pending development choice: {pillar: "aero"|"power"|"chassis", risk: 0|1|2}
-var pending_rnd := {}
+## Player development: spendable XP + upgrades in delivery.
+var dev_points := 0
+## [{pillar, name, gain, rel, races_left}]
+var active_upgrades: Array = []
 ## driver_id -> 0-100
 var confidence := {}
 
@@ -56,7 +62,8 @@ func new_career() -> void:
 	series_state = {}
 	rnd_bonuses = {}
 	confidence = {}
-	pending_rnd = {}
+	dev_points = 0
+	active_upgrades = []
 	for sid in SERIES_IDS:
 		var s: SeriesData = GameData.series[sid]
 		series_state[sid] = {
@@ -171,10 +178,12 @@ func apply_player_race(classification: Array) -> void:
 		})
 	_award_points(player_series_id, results)
 	_update_confidence(results)
+	_earn_dev_points(results)
 
 	var other_id: String = "effuan_one" if player_series_id == "effuan_two" else "effuan_two"
 	_quick_sim_series(other_id)
-	_resolve_rnd()
+	_advance_upgrades()
+	_ai_development()
 
 	round_index += 1
 	if round_index >= s.calendar_track_ids.size():
@@ -236,36 +245,67 @@ func _quick_sim_series(series_id: String) -> void:
 		confidence[did] = clampf(confidence.get(did, 50.0) + drift, CONFIDENCE_MIN, CONFIDENCE_MAX)
 
 
-## Player's chosen program + automatic balanced programs for every AI team.
-func _resolve_rnd() -> void:
+# -------------------------------------------------------------- R&D / XP -----
+
+## Weekend performance -> dev points. Base income + championship points scored
+## + a bonus for every position gained versus the starting grid.
+func _earn_dev_points(results: Array) -> void:
+	var s := player_series()
+	var earned := XP_BASE_PER_WEEKEND
+	var scoring := 0
+	for i in results.size():
+		var r: Dictionary = results[i]
+		if not r.dnf:
+			if r.team_id == player_team_id and scoring < s.points_table.size():
+				earned += s.points_table[scoring]
+			scoring += 1
+		if r.team_id == player_team_id and not r.dnf:
+			earned += maxi(0, int(r.expected) - (i + 1)) * 2
+	dev_points += earned
+	last_rnd_report = "Weekend development: +%d XP (bank %d)" % [earned, dev_points]
+
+
+## Called from the hub. Returns "" on success or a reason why not.
+func purchase_upgrade(pillar: String, variant: Dictionary) -> String:
+	if active_upgrades.size() >= MAX_ACTIVE_UPGRADES:
+		return "Development slots full (%d in progress)" % active_upgrades.size()
+	if dev_points < int(variant.cost):
+		return "Not enough XP (%d needed)" % int(variant.cost)
+	dev_points -= int(variant.cost)
+	active_upgrades.append({
+		"pillar": pillar, "name": variant.name, "gain": variant.gain,
+		"rel": variant.rel, "races_left": int(variant.races),
+	})
+	save_career()
+	return ""
+
+
+func _advance_upgrades() -> void:
+	var delivered: Array = []
+	for up in active_upgrades:
+		up.races_left = int(up.races_left) - 1
+		if up.races_left <= 0:
+			if up.pillar != "reliability":
+				rnd_bonuses[player_team_id][up.pillar] += up.gain
+			rnd_bonuses[player_team_id]["rel"] += up.rel
+			delivered.append(up)
+	for up in delivered:
+		active_upgrades.erase(up)
+		last_rnd_report += "   |   DELIVERED: %s %s (%+.1f, rel %+.1f)" % [
+				up.name, str(up.pillar).to_upper(), up.gain, up.rel]
+
+
+## AI teams develop at a pace comparable to an average player.
+func _ai_development() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = race_seed() + 31
-	last_rnd_report = ""
 	for tid in rnd_bonuses:
-		var pillar: String
-		var risk_idx: int
 		if tid == player_team_id:
-			if pending_rnd.is_empty():
-				last_rnd_report = "No development program was scheduled."
-				continue
-			pillar = pending_rnd.pillar
-			risk_idx = pending_rnd.risk
-		else:
-			pillar = ["aero", "power", "chassis"][rng.randi_range(0, 2)]
-			risk_idx = 1
-		var risk: Dictionary = RND_RISK[risk_idx]
-		var success: bool = rng.randf() < risk.chance
-		if success:
-			rnd_bonuses[tid][pillar] += risk.gain
-		rnd_bonuses[tid]["rel"] += risk.rel
-		if tid == player_team_id:
-			var outcome: String = "+%.1f %s" % [risk.gain, pillar.to_upper()] if success \
-					else "FAILED (%s %s)" % [risk.name, pillar.to_upper()]
-			var rel_note: String = ""
-			if risk.rel != 0.0:
-				rel_note = "  reliability %+.1f" % risk.rel
-			last_rnd_report = "R&D: " + outcome + rel_note
-	pending_rnd = {}
+			continue
+		if rng.randf() < 0.62:
+			var pillar: String = ["aero", "power", "chassis"][rng.randi_range(0, 2)]
+			rnd_bonuses[tid][pillar] += 2.0
+			rnd_bonuses[tid]["rel"] += rng.randf_range(-0.6, 0.3)
 
 
 # ------------------------------------------------------------- season end ----
@@ -363,6 +403,7 @@ func save_career() -> void:
 		"confidence": confidence, "season_over": season_over,
 		"promotion_report": promotion_report,
 		"final_standings": final_standings,
+		"dev_points": dev_points, "active_upgrades": active_upgrades,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -390,6 +431,8 @@ func load_career() -> bool:
 	season_over = parsed.season_over
 	promotion_report = parsed.get("promotion_report", [])
 	final_standings = parsed.get("final_standings", {})
+	dev_points = int(parsed.get("dev_points", 0))
+	active_upgrades = parsed.get("active_upgrades", [])
 	career_active = true
 	GameData.player_team_id = player_team_id
 	return true

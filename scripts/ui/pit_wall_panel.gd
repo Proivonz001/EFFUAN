@@ -20,6 +20,8 @@ var _speed_buttons: Array = []
 var _status: Label
 var _timer := 0.0
 var _pit_compound: TyreCompound
+var _pause_button: Button
+var _gaps_label: Label
 
 
 func _ready() -> void:
@@ -48,8 +50,8 @@ func _build(players: Array) -> void:
 	anchor_top = 1.0
 	anchor_right = 1.0
 	anchor_bottom = 1.0
-	offset_left = -560.0
-	offset_top = -240.0
+	offset_left = -600.0
+	offset_top = -330.0
 	offset_right = -24.0
 	offset_bottom = -24.0
 
@@ -69,6 +71,11 @@ func _build(players: Array) -> void:
 		top.add_child(b)
 		_car_buttons.append(b)
 	top.add_child(_spacer())
+	_pause_button = _mk_button("❚❚ PAUSE", 100)
+	_pause_button.pressed.connect(func() -> void:
+		manager.toggle_pause()
+		_refresh())
+	top.add_child(_pause_button)
 	for i in RaceManager.TIME_SCALES.size():
 		var b := _mk_button("%d×" % int(RaceManager.TIME_SCALES[i]), 52)
 		b.pressed.connect(func() -> void:
@@ -78,11 +85,17 @@ func _build(players: Array) -> void:
 		_speed_buttons.append(b)
 
 	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 14)
-	_status.add_theme_color_override("font_color", Color(0.75, 0.78, 0.85))
+	_status.add_theme_font_size_override("font_size", 15)
+	_status.add_theme_color_override("font_color", Color(0.88, 0.90, 0.95))
 	vbox.add_child(_status)
 
+	_gaps_label = Label.new()
+	_gaps_label.add_theme_font_size_override("font_size", 13)
+	_gaps_label.add_theme_color_override("font_color", Color(0.65, 0.68, 0.75))
+	vbox.add_child(_gaps_label)
+
 	# Row: ERS modes.
+	vbox.add_child(_section_label("ERS MODE"))
 	var ers_row := HBoxContainer.new()
 	ers_row.add_theme_constant_override("separation", 6)
 	vbox.add_child(ers_row)
@@ -95,6 +108,11 @@ func _build(players: Array) -> void:
 		_ers_buttons.append(b)
 
 	# Row: fuel mix + compound pick + box call.
+	var labels_row := HBoxContainer.new()
+	vbox.add_child(labels_row)
+	labels_row.add_child(_section_label("FUEL MIX"))
+	labels_row.add_child(_spacer())
+	labels_row.add_child(_section_label("PIT STOP — next tyres + BOX"))
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 6)
 	vbox.add_child(bottom)
@@ -124,6 +142,14 @@ func _build(players: Array) -> void:
 	bottom.add_child(_box_button)
 
 
+func _section_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
+	return l
+
+
 func _refresh() -> void:
 	if selected == null:
 		return
@@ -140,6 +166,8 @@ func _refresh() -> void:
 		_set_active(entry.button, entry.compound == _pit_compound)
 	_set_active(_box_button, selected.pit_requested)
 	_box_button.text = "BOX ✓" if selected.pit_requested else "BOX"
+	_pause_button.text = "▶ RESUME" if manager.paused else "❚❚ PAUSE"
+	_set_active(_pause_button, manager.paused)
 
 	_status.text = "%s   |   Fuel %.1f kg   ERS %d%%   |   %s  wear %d%%  %d°C%s" % [
 		selected.display_name(),
@@ -150,6 +178,10 @@ func _refresh() -> void:
 		int(selected.tyre_temp_c),
 		"   |   IN PIT" if selected.in_pit else "",
 	]
+	var gaps: Array = manager.gaps_around(selected)
+	var ahead_txt: String = "—" if gaps[0] < 0.0 or gaps[0] > 90.0 else "%.1fs" % gaps[0]
+	var behind_txt: String = "—" if gaps[1] < 0.0 or gaps[1] > 90.0 else "%.1fs" % gaps[1]
+	_gaps_label.text = "gap ahead %s   ·   gap behind %s" % [ahead_txt, behind_txt]
 
 
 func _mk_button(text: String, min_width: float) -> Button:

@@ -15,7 +15,11 @@ func run(tree: SceneTree) -> void:
 		var track: TrackData = GameState.current_track()
 		GameState.pending_weather = GameState.make_weather()
 		GameState.pending_setup_bias = track.df_bias   # engineer-perfect setup
-		GameState.pending_rnd = {"pillar": "aero", "risk": 1}
+		# Spend XP like a player would: standard aero whenever affordable.
+		if GameState.dev_points >= 35 \
+				and GameState.active_upgrades.size() < GameState.MAX_ACTIVE_UPGRADES:
+			var err: String = GameState.purchase_upgrade("aero", GameState.UPGRADE_VARIANTS[1])
+			_check(err == "", "upgrade purchase accepted (%s)" % err)
 
 		var entries: Array = GameState.build_entries(GameState.player_series_id)
 		GameState.pending_grid = GameState.run_qualifying(entries)
@@ -63,6 +67,12 @@ func run(tree: SceneTree) -> void:
 		if b.aero != 0.0 or b.power != 0.0 or b.chassis != 0.0:
 			rnd_moved = true
 	_check(rnd_moved, "R&D development moved car stats")
+	_check(GameState.rnd_bonuses[GameState.player_team_id].aero > 0.0,
+			"player XP upgrades were bought and delivered (aero %+.1f)" %
+			GameState.rnd_bonuses[GameState.player_team_id].aero)
+	print("Player dev: aero %+.1f  bank %d XP  in-progress %d" % [
+			GameState.rnd_bonuses[GameState.player_team_id].aero,
+			GameState.dev_points, GameState.active_upgrades.size()])
 
 	for did in GameState.confidence:
 		var c: float = GameState.confidence[did]

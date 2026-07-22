@@ -44,6 +44,20 @@ func _build() -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	# Column header keys the tower for first-time readers.
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	for col in [["P", 24], ["", 5], ["DRIVER", 48], ["GAP", 78], ["TYRE", 16], ["WEAR", 40]]:
+		var h := Label.new()
+		h.text = col[0]
+		h.custom_minimum_size = Vector2(col[1], 0)
+		h.add_theme_font_size_override("font_size", 11)
+		h.add_theme_color_override("font_color", Color(0.5, 0.53, 0.6))
+		if col[0] == "GAP" or col[0] == "P":
+			h.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		header.add_child(h)
+	vbox.add_child(header)
+
 	for i in ROW_COUNT:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
