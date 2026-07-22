@@ -21,16 +21,16 @@ GameData="*res://autoload/game_data.gd"
 GameState="*res://autoload/game_state.gd"
 Sfx="*res://autoload/sfx.gd"
 
-[gui]
-
-theme/custom="res://theme/effuan_theme.tres"
-
 [display]
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/handheld/orientation=4
+
+[gui]
+
+theme/custom="res://theme/effuan_theme.tres"
 
 [rendering]
 

@@ -121,6 +121,8 @@ func _setup_race() -> void:
 	add_child(battles)
 
 	race_running = true
+	if "--cam-car" in OS.get_cmdline_user_args():
+		camera_mode = 2   # debug: boot straight into the chase camera
 	if "--autostart" in OS.get_cmdline_user_args():
 		paused = false
 	else:

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="30" viewBox="0 0 64 30">
+  <!-- Team-colored layer: modulated by the team color at runtime.
+       Light grays keep shading when tinted. Car points +x (nose right). -->
+  <!-- rear wing -->
+  <rect x="1" y="3.5" width="6" height="23" rx="1.2" fill="#f2f2f2"/>
+  <!-- sidepods (slightly darker for depth) -->
+  <path d="M19 5.5 L35 4.5 L39 8 L39 22 L35 25.5 L19 24.5 L15.5 20 L15.5 10 Z" fill="#c9c9c9"/>
+  <!-- monocoque + engine cover -->
+  <path d="M7 12 L19 9 L34 8 L44 10 L47 12 L47 18 L44 20 L34 22 L19 21 L7 18 Z" fill="#efefef"/>
+  <!-- nose -->
+  <path d="M45 11.5 L59 13 L59 17 L45 18.5 Z" fill="#efefef"/>
+  <!-- front wing -->
+  <rect x="57" y="1.5" width="6" height="27" rx="1.6" fill="#e2e2e2"/>
+</svg>
