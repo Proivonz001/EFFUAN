@@ -12,6 +12,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--screenshot"):
 			_screenshot_timer = 6.0
+			if "=" in arg:
+				_screenshot_timer = maxf(float(arg.get_slice("=", 1)), 1.0)
 	var race: Node = load(RACE_SCENE).instantiate()
 	add_child(race)
 
