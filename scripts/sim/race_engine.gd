@@ -45,6 +45,9 @@ const NOISE_SIGMA_PER_CONSISTENCY := 0.0025
 # Battles.
 const MIN_GAP_S := 0.4               # train clamp distance behind a blocked leader
 const ATTACK_COOLDOWN_SEGMENTS := 5
+const DUEL_MAX_T := 6.0              # sim-seconds cap on a wheel-to-wheel phase
+const SWAP_LEAD_M := 3.0
+const DEFENDER_TIME_LOSS := 1.03
 
 # Race procedure.
 const START_SPACING_M := 7.0
@@ -202,11 +205,50 @@ func tick(sim_dt: float) -> void:
 	sim_time += sim_dt
 	order.sort_custom(_position_sort)
 	_update_gaps()
+	_maintain_duels(sim_dt)
 	OvertakeResolver.resolve_all(self)
 	_update_safety_car()
 	if _all_finished():
 		race_over = true
 		events.append({"type": "race_finished"})
+
+
+## Duel upkeep: advance timers, dissolve broken pairs, enforce the time cap.
+func _maintain_duels(sim_dt: float) -> void:
+	for car in cars:
+		if car.duel_with < 0:
+			continue
+		var partner: CarData = cars[car.duel_with]
+		if partner.duel_with != car.index or partner.dnf or partner.in_pit \
+				or partner.finished or car.dnf or car.in_pit or car.finished:
+			car.duel_with = -1
+			continue
+		if car.duel_role == 0:
+			car.duel_t += sim_dt
+			if car.duel_t > DUEL_MAX_T:
+				_resolve_duel(car)
+
+
+## The braking zone verdict: the pre-rolled outcome is applied and the pair split.
+func _resolve_duel(attacker: CarData) -> void:
+	if attacker.duel_with < 0:
+		return
+	var defender: CarData = cars[attacker.duel_with]
+	var success := attacker.duel_success
+	attacker.duel_with = -1
+	defender.duel_with = -1
+	if defender.dnf or defender.in_pit or defender.finished:
+		return
+	if success:
+		set_race_distance(attacker, defender.race_distance_m + SWAP_LEAD_M)
+		defender.segment_time *= DEFENDER_TIME_LOSS
+		defender.attack_cooldown = ATTACK_COOLDOWN_SEGMENTS + 2
+		events.append({"type": "overtake", "attacker": attacker, "defender": defender,
+				"lap": maxi(attacker.lap, 1)})
+	else:
+		var min_gap_m := MIN_GAP_S * maxf(defender.current_speed, 1.0)
+		set_race_distance(attacker, defender.race_distance_m - min_gap_m)
+		attacker.attack_cooldown = ATTACK_COOLDOWN_SEGMENTS
 
 
 func _update_safety_car() -> void:
@@ -289,6 +331,12 @@ func _on_segment_complete(car: CarData) -> void:
 		_close_sector(car, 0)
 	elif car.segment_index == _sector_bounds[1]:
 		_close_sector(car, 1)
+
+	# A dueling attacker reaching a corner entry = the braking zone: decide it.
+	if car.duel_with >= 0 and car.duel_role == 0 \
+			and track.get_segment(car.segment_index).type == TrackSegment.Type.CORNER \
+			and car.duel_t > 0.6:
+		_resolve_duel(car)
 
 
 ## Sector timing for the leaderboard's green/purple dots.

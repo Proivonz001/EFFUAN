@@ -37,7 +37,15 @@ func _ready() -> void:
 	manager.dnf_happened.connect(_on_dnf)
 	manager.sc_changed.connect(_on_sc)
 	manager.overtake_happened.connect(_on_overtake)
+	manager.duel_started.connect(_on_duel)
 	manager.race_finished.connect(_on_finish)
+
+
+func _on_duel(attacker: CarData, defender: CarData) -> void:
+	if attacker.is_player:
+		_say("%s  |  Alongside %s — hold it into the braking zone!" % [attacker.short_code(), defender.short_code()], COL_GOOD)
+	elif defender.is_player:
+		_say("%s  |  %s is alongside — defend into the corner!" % [defender.short_code(), attacker.short_code()], COL_WARN)
 
 
 func _process(delta: float) -> void:

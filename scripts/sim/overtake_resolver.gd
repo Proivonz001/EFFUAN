@@ -31,8 +31,18 @@ static func resolve_all(engine: RaceEngine) -> void:
 		_resolve_pair(engine, leader, follower)
 
 
+const DUEL_ALONGSIDE_M := 2.0         # sim gap while wheel-to-wheel (noses overlap visually)
+
 static func _resolve_pair(engine: RaceEngine, leader: CarData, follower: CarData) -> void:
 	var min_gap_m: float = RaceEngine.MIN_GAP_S * maxf(leader.current_speed, 1.0)
+
+	# An active duel pins the pair side by side until the braking zone decides it.
+	if follower.duel_with == leader.index and leader.duel_with == follower.index:
+		follower.in_battle = true
+		leader.in_battle = true
+		engine.set_race_distance(follower, leader.race_distance_m - DUEL_ALONGSIDE_M)
+		return
+
 	var caught: bool = follower.race_distance_m > leader.race_distance_m - min_gap_m
 	if not caught:
 		follower.in_battle = false
@@ -46,20 +56,28 @@ static func _resolve_pair(engine: RaceEngine, leader: CarData, follower: CarData
 		engine.set_race_distance(follower, leader.race_distance_m - min_gap_m)
 		return
 
+	# A car already busy in another duel just holds station.
+	if follower.duel_with >= 0 or leader.duel_with >= 0:
+		engine.set_race_distance(follower, leader.race_distance_m - min_gap_m)
+		return
+
 	if follower.attack_cooldown == 0:
+		# The overtake becomes a DUEL: outcome pre-rolled here, the pair runs
+		# wheel-to-wheel and the move resolves at the next corner entry.
 		var chance := _pass_chance(engine, leader, follower)
 		follower.attack_cooldown = RaceEngine.ATTACK_COOLDOWN_SEGMENTS
-		if engine.rng().randf() < chance:
-			# Clean swap: attacker emerges just ahead, defender loses momentum.
-			# The defender also gets a cooldown so the pair doesn't ping-pong.
-			engine.set_race_distance(follower, leader.race_distance_m + SWAP_LEAD_M)
-			leader.segment_time *= DEFENDER_TIME_LOSS
-			leader.attack_cooldown = RaceEngine.ATTACK_COOLDOWN_SEGMENTS + 2
-			engine.events.append({
-				"type": "overtake", "attacker": follower, "defender": leader,
-				"lap": maxi(follower.lap, 1),
-			})
-			return
+		follower.duel_with = leader.index
+		follower.duel_role = 0
+		follower.duel_success = engine.rng().randf() < chance
+		follower.duel_t = 0.0
+		follower.duel_lane = 1.0
+		leader.duel_with = follower.index
+		leader.duel_role = 1
+		leader.duel_t = 0.0
+		leader.duel_lane = -1.0
+		engine.set_race_distance(follower, leader.race_distance_m - DUEL_ALONGSIDE_M)
+		engine.events.append({"type": "duel", "attacker": follower, "defender": leader})
+		return
 
 	# Train clamp: held behind, inheriting the leader's effective pace.
 	engine.set_race_distance(follower, leader.race_distance_m - min_gap_m)

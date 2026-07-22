@@ -5,8 +5,9 @@ extends Node2D
 ## offset. No signals, no sim writes.
 
 const SMOOTHING := 9.0               # 1/s — how fast the visual chases the sim position
-const LANE_BASE_PX := 5.0            # everyday side offset so cars don't stack
-const LANE_BATTLE_PX := 13.0         # widened while attacking/defending — two-wide on the 34px ribbon
+const LANE_BASE_PX := 6.0            # everyday side offset so cars don't stack
+const LANE_BATTLE_PX := 12.0         # widened while attacking/defending
+const LANE_DUEL_PX := 14.0           # full wheel-to-wheel spread on the 40px ribbon
 const TRAIL_LENGTH := 12
 const DRS_COLOR := Color(0.2, 1.0, 0.5)
 const ERS_COLOR := Color(1.0, 0.35, 0.9)
@@ -154,6 +155,9 @@ func _apply_transform(delta: float) -> void:
 	_visual_offset = fposmod(_visual_offset + diff * minf(delta * SMOOTHING, 1.0), L)
 
 	var lane_target := (LANE_BATTLE_PX if car.in_battle else LANE_BASE_PX) * _lane_side
+	if car.duel_with >= 0:
+		# Wheel-to-wheel: the duel assigns opposite lanes to the pair.
+		lane_target = LANE_DUEL_PX * car.duel_lane
 	_lane_current = lerpf(_lane_current, lane_target, minf(delta * 4.0, 1.0))
 
 	var pos := renderer.sample(_visual_offset)

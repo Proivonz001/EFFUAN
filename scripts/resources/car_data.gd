@@ -66,6 +66,13 @@ var attack_cooldown: int = 0          # segments until the next overtake attempt
 var in_battle: bool = false           # true while actively attacking/defending (visual lane offset)
 var drs_open: bool = false            # DRS active in the current segment (visual indicator)
 
+# --- duel: the wheel-to-wheel phase of an overtake ---
+var duel_with: int = -1               # partner car index, -1 = not dueling
+var duel_role: int = 0                # 0 = attacker, 1 = defender
+var duel_success: bool = false        # pre-rolled outcome, revealed at the braking zone
+var duel_t: float = 0.0               # sim seconds spent side by side
+var duel_lane: float = 0.0            # visual lane sign while dueling (+1 / -1)
+
 
 func display_name() -> String:
 	return driver.driver_name if driver else "?"

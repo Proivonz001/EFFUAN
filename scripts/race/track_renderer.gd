@@ -12,9 +12,9 @@ const EDGE := Color(0.85, 0.86, 0.88, 0.9)
 const DRS_COLOR := Color(0.15, 0.9, 0.45, 0.85)
 const KERB_RED := Color(0.82, 0.18, 0.16)
 const KERB_WHITE := Color(0.88, 0.88, 0.9)
-const TRACK_WIDTH := 34.0
+const TRACK_WIDTH := 40.0
 const KERB_DASH_PX := 14.0
-const PIT_LANE_DEPTH := 36.0
+const PIT_LANE_DEPTH := 42.0
 
 @export var path: TrackPath
 @export var track_data: TrackData

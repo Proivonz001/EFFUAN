@@ -14,6 +14,7 @@ signal dnf_happened(car: CarData)
 signal sc_changed(phase: String)
 signal fastest_lap_set(car: CarData, time: float)
 signal replay_ready(data: Dictionary)
+signal duel_started(attacker: CarData, defender: CarData)
 
 const SIM_TICK := 0.05
 const TIME_SCALES: Array[float] = [1.0, 4.0, 8.0]
@@ -333,6 +334,8 @@ func _drain_events() -> void:
 			"overtake":
 				overtake_happened.emit(ev.attacker, ev.defender)
 				_maybe_replay(ev.attacker, ev.defender)
+			"duel":
+				duel_started.emit(ev.attacker, ev.defender)
 			"pit_in":
 				pit_event.emit(ev.car, true)
 			"pit_out":
